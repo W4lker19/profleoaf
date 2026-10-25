@@ -14,7 +14,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "tema": "Cidadania digital",
     "icone": "conversa",
     "titulo": "Conviver na Internet",
-    "descricao": "10 situações do dia a dia sobre netiqueta, ciberbullying e dados pessoais. No fim, escreve uma regra para a turma.",
+    "descricao": "Uma semana no grupo da turma: decide o que fazer em cada situação e vê como as tuas escolhas mudam o ambiente do grupo.",
     "estado": "visivel",
     "disponivelEm": null
   },
@@ -25,6 +25,16 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "icone": "robo",
     "titulo": "Robô Programador",
     "descricao": "Escreve a sequência de instruções e leva o robô até ao tesouro. Seis níveis, cada um mais difícil.",
+    "estado": "oculta",
+    "disponivelEm": null
+  },
+  {
+    "ficheiro": "conviver-na-internet-quiz.html",
+    "disciplina": "CEA-STEAM · 5.º ano",
+    "tema": "Cidadania digital",
+    "icone": "seguranca",
+    "titulo": "Conviver na Internet (quiz)",
+    "descricao": "Versão em quiz: 10 situações sobre netiqueta, ciberbullying e dados pessoais, com uma pergunta de cada vez.",
     "estado": "oculta",
     "disponivelEm": null
   }

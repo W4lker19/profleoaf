@@ -7,319 +7,432 @@
 <title>Conviver na Internet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lexend:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap">
 <style>
-/* Layout: uma situação de cada vez, num cartão tipo ecrã de conversa; barra de progresso no topo; ecrã final com a regra da turma */
+/* Layout: uma semana no grupo da turma. Barra com os dias e o medidor do ambiente do grupo;
+   ao centro um ecrã de conversa (como no telemóvel); por baixo, o painel de ação de cada desafio. */
 :root {
-  --bg: #eef3f8;
-  --paper: #ffffff;
-  --line: #c9d8e8;
-  --ink: #1d2b3a;
-  --muted: #5a6b7d;
-  --accent: #2a5d8f;
-  --accent-ink: #ffffff;
-  --bubble: #dde8f4;
-  --bubble-me: #d6efe0;
-  --ok: #1f8a4c;
-  --ok-bg: #e2f4e9;
-  --bad: #b8432f;
-  --bad-bg: #fbe5e2;
-  --warn: #8a5a00;
-  --warn-bg: #fff1cc;
-  --tag: #ffd9c4;
-  --tag-ink: #7a3412;
+  --bg: #f4f7fb; --grid: #dfe8f2; --paper: #ffffff; --line: #d3dfeb; --ink: #1b2a39; --muted: #586a7c;
+  --accent: #2a5d8f; --accent-ink: #ffffff; --robot: #e8692c;
+  --chat: #e9f0f7; --bubble: #ffffff; --me: #d7efe0; --me-ink: #12361f; --sys: #fff1c2;
+  --ok: #1f8a4c; --ok-bg: #e2f4e9; --warn: #8a5a00; --warn-bg: #fff1cc; --bad: #b8432f; --bad-bg: #fbe5e2;
   --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
   --body: "Lexend", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #111a24; --paper: #18232f; --line: #2c3c4d; --ink: #e6edf4; --muted: #9aabbd;
-    --accent: #5b9bd5; --accent-ink: #0d1620; --bubble: #243445; --bubble-me: #1d3a2a;
-    --ok: #5fd08f; --ok-bg: #173325; --bad: #ff8a7a; --bad-bg: #3a1d1a;
-    --warn: #f5c533; --warn-bg: #3a2f10; --tag: #5a3220; --tag-ink: #ffd9c4;
+  :root {
+    --bg: #0f1822; --grid: #182533; --paper: #172230; --line: #263647; --ink: #e8eef5; --muted: #9eb0c2;
+    --accent: #6aa7dd; --accent-ink: #0d1620; --robot: #f07a3e;
+    --chat: #121d29; --bubble: #1f2d3c; --me: #1d3a2a; --me-ink: #d7f5e3; --sys: #3a3112;
+    --ok: #66d498; --ok-bg: #173325; --warn: #f5c533; --warn-bg: #3a2f10; --bad: #ff8a7a; --bad-bg: #3a1d1a;
     color-scheme: dark;
   }
 }
-:root[data-theme="dark"] {
-  --bg: #111a24; --paper: #18232f; --line: #2c3c4d; --ink: #e6edf4; --muted: #9aabbd;
-  --accent: #5b9bd5; --accent-ink: #0d1620; --bubble: #243445; --bubble-me: #1d3a2a;
-  --ok: #5fd08f; --ok-bg: #173325; --bad: #ff8a7a; --bad-bg: #3a1d1a;
-  --warn: #f5c533; --warn-bg: #3a2f10; --tag: #5a3220; --tag-ink: #ffd9c4;
-  color-scheme: dark;
-}
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
 body {
-  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5;
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 20px 32px;
+  padding-block: 20px 40px;
 }
-.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 16px; }
-header { display: grid; gap: 4px; }
-h1 { font-family: var(--display); font-weight: 600; font-size: clamp(1.7rem, 4.5vw, 2.4rem); margin: 0; line-height: 1.1; text-wrap: balance; }
-.sub { margin: 0; color: var(--muted); }
-.progress { display: flex; align-items: center; gap: 12px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.bar { flex: 1; height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
-.bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 99px; transition: width .3s ease; }
-.card { background: var(--paper); border-radius: 18px; padding: 20px; display: grid; gap: 14px; }
-.tag { justify-self: start; font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; background: var(--tag); color: var(--tag-ink); padding: 4px 10px; border-radius: 99px; }
-.where { font-size: .85rem; color: var(--muted); margin: 0; }
-.chat { display: grid; gap: 8px; }
-.bubble { background: var(--bubble); padding: 10px 14px; border-radius: 16px 16px 16px 4px; max-width: 88%; justify-self: start; }
-.bubble b { display: block; font-size: .78rem; color: var(--muted); font-weight: 600; }
-.q { font-family: var(--display); font-weight: 500; font-size: 1.25rem; margin: 4px 0 0; text-wrap: balance; }
+.wrap { max-width: 720px; margin: 0 auto; display: grid; gap: 14px; }
+.home { font-size: .9rem; color: var(--muted); text-decoration: none; justify-self: start; }
+.home:hover { text-decoration: underline; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.8rem, 5.5vw, 2.5rem); margin: 0; line-height: 1.05; }
+.sub { margin: 4px 0 0; color: var(--muted); }
+
+/* Barra de estado */
+.status { background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 12px 14px; display: grid; gap: 10px; }
+.days { display: flex; gap: 6px; flex-wrap: wrap; }
+.day { font: 600 .82rem var(--body); padding: 4px 10px; border-radius: 99px; background: var(--chat); color: var(--muted); }
+.day.now { background: var(--accent); color: var(--accent-ink); }
+.day.done { color: var(--ok); }
+.meter { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: .9rem; }
+.meter .bar { height: 12px; border-radius: 99px; background: var(--chat); overflow: hidden; }
+.meter .bar i { display: block; height: 100%; border-radius: 99px; transition: width .5s ease, background .5s ease; }
+.meter b { font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
+
+/* Conversa */
+.phone { background: var(--chat); border: 2px solid var(--line); border-radius: 20px; overflow: hidden; }
+.phone-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--paper); border-bottom: 2px solid var(--line); }
+.avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 600 .9rem var(--display); color: #fff; background: var(--accent); flex: none; }
+.phone-head b { display: block; font-size: .95rem; }
+.phone-head small { color: var(--muted); font-size: .8rem; }
+.msgs { display: grid; gap: 8px; padding: 14px; min-height: 120px; align-content: start; }
+.msg { max-width: 85%; padding: 8px 12px; border-radius: 16px 16px 16px 4px; background: var(--bubble); justify-self: start; overflow-wrap: anywhere; }
+.msg .who { display: block; font-size: .75rem; font-weight: 600; }
+.msg.me { justify-self: end; background: var(--me); color: var(--me-ink); border-radius: 16px 16px 4px 16px; }
+.msg.sys { justify-self: center; background: var(--sys); font-size: .85rem; border-radius: 10px; text-align: center; max-width: 95%; }
+.msg.img { font-style: italic; color: var(--muted); }
+.typing { justify-self: start; background: var(--bubble); border-radius: 16px; padding: 10px 14px; display: flex; gap: 4px; }
+.typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: dot 1s infinite; }
+.typing span:nth-child(2) { animation-delay: .15s; } .typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes dot { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+
+/* Ação */
+.panel { background: var(--paper); border: 2px solid var(--line); border-radius: 18px; padding: 16px; display: grid; gap: 12px; }
+.task { font-family: var(--display); font-weight: 600; font-size: 1.2rem; margin: 0; text-wrap: balance; }
+.hint { margin: 0; color: var(--muted); font-size: .92rem; }
 .opts { display: grid; gap: 10px; }
-.opt {
-  font: 500 1rem var(--body); text-align: left; color: var(--ink); background: var(--bg);
-  border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; cursor: pointer;
-  display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
-}
-.opt .l { font-family: var(--display); font-weight: 600; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--paper); border: 2px solid var(--line); }
+.opt { font: 500 1rem var(--body); text-align: left; color: var(--ink); background: var(--bg); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; cursor: pointer; }
 .opt:hover:not(:disabled) { border-color: var(--accent); }
 .opt:disabled { cursor: default; }
-.opt.right { border-color: var(--ok); background: var(--ok-bg); }
-.opt.wrong { border-color: var(--bad); background: var(--bad-bg); }
+.opt.good { border-color: var(--ok); background: var(--ok-bg); }
+.opt.badc { border-color: var(--bad); background: var(--bad-bg); }
 .opt.dim { opacity: .55; }
+textarea { font: 400 1rem var(--body); color: var(--ink); background: var(--bg); border: 2px solid var(--line); border-radius: 12px; padding: 12px; width: 100%; min-height: 96px; resize: vertical; }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .92rem; }
+.checks li::before { content: "✗ "; color: var(--bad); font-weight: 700; }
+.checks li.pass::before { content: "✓ "; color: var(--ok); }
+.cards { display: grid; gap: 8px; }
+.card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--bg); border: 2px solid transparent; }
+.card.right { border-color: var(--ok); } .card.wrong { border-color: var(--bad); }
+.card .why { grid-column: 1 / -1; font-size: .85rem; color: var(--muted); }
+.pick { display: inline-flex; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; }
+.pick button { font: 600 .85rem var(--body); padding: 7px 10px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.pick button + button { border-left: 2px solid var(--line); }
+.pick button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .fb { border-radius: 14px; padding: 12px 14px; display: grid; gap: 4px; }
-.fb.ok { background: var(--ok-bg); }
-.fb.bad { background: var(--bad-bg); }
+.fb.ok { background: var(--ok-bg); } .fb.mid { background: var(--warn-bg); } .fb.bad { background: var(--bad-bg); }
 .fb strong { font-family: var(--display); font-weight: 600; font-size: 1.05rem; }
-.fb.ok strong { color: var(--ok); }
-.fb.bad strong { color: var(--bad); }
+.fb.ok strong { color: var(--ok); } .fb.mid strong { color: var(--warn); } .fb.bad strong { color: var(--bad); }
 .rule { font-size: .92rem; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 4px; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .btn { font: 600 1rem var(--body); border-radius: 12px; padding: 11px 18px; border: 2px solid transparent; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
 .btn.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
-button:focus-visible, textarea:focus-visible { outline: 3px solid var(--warn); outline-offset: 2px; }
-.score { font-family: var(--display); font-weight: 600; font-size: 2.4rem; margin: 0; font-variant-numeric: tabular-nums; }
-.badge { font-family: var(--display); font-size: 1.2rem; margin: 0; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid var(--robot); outline-offset: 2px; }
+
+/* Final */
+.summary { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.summary li { display: grid; grid-template-columns: 4.5em minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 8px 10px; border-radius: 10px; background: var(--bg); font-size: .95rem; }
+.summary .d { font-weight: 600; color: var(--muted); font-size: .85rem; }
+.summary .r { font-weight: 600; font-size: .85rem; }
+.summary .r.ok { color: var(--ok); } .summary .r.bad { color: var(--bad); }
+.big { font-family: var(--display); font-weight: 700; font-size: 2rem; margin: 0; }
 ul.gold { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
-label { font-weight: 600; }
-textarea {
-  font: 400 1rem var(--body); color: var(--ink); background: var(--bg); border: 2px solid var(--line);
-  border-radius: 12px; padding: 12px; width: 100%; min-height: 90px; resize: vertical;
-}
 .check { font-size: .92rem; border-radius: 10px; padding: 8px 12px; background: var(--bg); color: var(--muted); }
-.check.warn { background: var(--warn-bg); color: var(--warn); }
-.check.ok { background: var(--ok-bg); color: var(--ok); }
-.help { font-size: .9rem; color: var(--muted); margin: 0; }
-.help strong { color: var(--ink); font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+.check.warn { background: var(--warn-bg); color: var(--warn); } .check.ok { background: var(--ok-bg); color: var(--ok); }
+label.lbl { font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .meter .bar i { transition: none; } .typing span { animation: none; } }
+@media (max-width: 480px) { .summary li { grid-template-columns: minmax(0, 1fr) auto; } .summary .d { grid-column: 1 / -1; } }
 </style>
-<style>html,body{margin:0}.home{display:inline-block;margin-bottom:4px;font-size:.9rem;color:var(--muted);text-decoration:none}.home:hover{text-decoration:underline}</style>
 </head>
 <body>
-
-
 <div class="wrap">
   <a class="home" href="index.html">← Todas as atividades</a>
   <header>
-    <h1>Conviver na Internet</h1>
-    <p class="sub">10 situações do dia a dia. Em cada uma, escolhe o que farias.</p>
+    <h1>Uma semana no grupo</h1>
+    <p class="sub">Conviver na Internet · Em pares, decidam o que fazer em cada situação. As vossas escolhas mudam o ambiente do grupo.</p>
   </header>
 
-  <div class="progress" id="progressRow">
-    <span id="count">Situação 1 de 10</span>
-    <div class="bar" aria-hidden="true"><i id="barFill"></i></div>
-    <span id="pts">0 pontos</span>
-  </div>
+  <section class="status" aria-label="Progresso">
+    <div class="days" id="days"></div>
+    <div class="meter">
+      <span>Ambiente do grupo</span>
+      <div class="bar" aria-hidden="true"><i id="meterFill"></i></div>
+      <b id="meterLabel" aria-live="polite"></b>
+    </div>
+  </section>
 
-  <section class="card" id="game" aria-live="polite"></section>
+  <section class="phone" id="phone" aria-label="Conversa">
+    <div class="phone-head"><span class="avatar" id="chatAvatar"></span><div><b id="chatName"></b><small id="chatInfo"></small></div></div>
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" id="panel" aria-live="polite"></section>
 </div>
 
 <script>
-const S = [
-  { tag: 'Netiqueta', where: 'Grupo da turma',
-    q: 'Queres lembrar o grupo da turma de que amanhã há teste. Como escreves?',
-    o: [
-      ['AMANHÃ HÁ TESTE!!!!!', 'Escrever tudo em maiúsculas lê-se como se estivesses a gritar.'],
-      ['Olá! Lembrem-se de que amanhã há teste de Matemática. Bom estudo 🙂', 'Mensagem clara, simpática e sem gritos.'],
-      ['teste', 'Ninguém percebe de que teste falas nem quando é.'],
-    ], c: 1, rule: 'Na Internet, MAIÚSCULAS = GRITAR. Escreve como falarias com alguém à tua frente.' },
+const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'];
+const CHATS = {
+  grupo: { name: 'Grupo 5.º ano', info: '24 participantes', av: '5º', color: '#2a5d8f' },
+  bruno: { name: 'Bruno', info: 'mensagem privada', av: 'B', color: '#7a4fb5' },
+  rita: { name: 'Rita', info: 'mensagem privada', av: 'R', color: '#c2417a' },
+  diogo: { name: 'Diogo', info: 'mensagem privada', av: 'D', color: '#2f8a6b' },
+  jogo: { name: 'Amigo_do_jogo', info: 'conheceste-o num jogo online', av: '?', color: '#6d7b8a' },
+  caixa: { name: 'As tuas mensagens', info: 'sexta-feira à tarde', av: '✉', color: '#e8692c' },
+};
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const norm = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+let S, run = 0;
 
-  { tag: 'Mal-entendidos', where: 'Mensagem privada',
-    chat: [['Rita', 'estás tão bem nessa foto 😂']],
-    q: 'Não sabes se a Rita está a elogiar-te ou a gozar contigo. O que fazes?',
-    o: [
-      ['Respondo com um insulto, antes que ela goze mais.', 'Se ela estava a ser simpática, quem ofendeu foste tu.'],
-      ['Saio do grupo e deixo de falar com ela.', 'Afastas-te sem saber se havia algum problema.'],
-      ['Pergunto com calma o que ela quis dizer.', 'Por escrito não há tom de voz nem expressão. Perguntar evita zangas.'],
-    ], c: 2, rule: 'Antes de reagir, pergunta. Do outro lado está uma pessoa real.' },
+/* ---------- estado ---------- */
+function reset() { S = { step: 0, meter: 60, flags: {}, results: [] }; }
+function setMeter(delta) {
+  S.meter = Math.max(0, Math.min(100, S.meter + (delta || 0)));
+  const m = S.meter, [lbl, col] = m >= 80 ? ['Ótimo', 'var(--ok)'] : m >= 60 ? ['Bom', 'var(--ok)'] : m >= 40 ? ['Tenso', 'var(--warn)'] : ['Mau', 'var(--bad)'];
+  $('meterFill').style.width = m + '%'; $('meterFill').style.background = col;
+  $('meterLabel').textContent = lbl; $('meterLabel').style.color = col;
+}
+function setDay(d) {
+  $('days').innerHTML = DIAS.map((n, i) => `<span class="day ${i === d ? 'now' : i < d ? 'done' : ''}">${i < d ? '✓ ' : ''}${n}</span>`).join('');
+}
+function setChat(k) { const c = CHATS[k]; $('chatName').textContent = c.name; $('chatInfo').textContent = c.info; $('chatAvatar').textContent = c.av; $('chatAvatar').style.background = c.color; $('msgs').innerHTML = ''; }
+const wait = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+async function say(list) {
+  const my = run;
+  for (const m of list) {
+    if (my !== run) return;
+    const box = $('msgs');
+    if (!m.me && !m.sys) { const t = document.createElement('div'); t.className = 'typing'; t.innerHTML = '<span></span><span></span><span></span>'; box.appendChild(t); await wait(650); t.remove(); }
+    if (my !== run) return;
+    const el = document.createElement('div');
+    el.className = 'msg' + (m.me ? ' me' : '') + (m.sys ? ' sys' : '') + (m.img ? ' img' : '');
+    el.innerHTML = (m.who ? `<span class="who" style="color:${m.color || 'var(--accent)'}">${esc(m.who)}</span>` : '') + esc(m.t);
+    box.appendChild(el); await wait(250);
+  }
+}
+function record(step, ok, nota) { S.results.push({ dia: DIAS[step.dia], tema: step.tema, ok, nota }); }
+function feedback(kind, title, text, rule) {
+  return `<div class="fb ${kind}"><strong>${esc(title)}</strong><span>${esc(text)}</span>${rule ? `<span class="rule">${esc(rule)}</span>` : ''}</div>
+          <div class="row"><button type="button" class="btn" id="next">Continuar</button></div>`;
+}
+function bindNext() { const b = $('next'); b.onclick = () => { S.step++; play(); }; b.focus({ preventScroll: true }); }
 
-  { tag: 'Ciberbullying', where: 'Grupo da turma',
-    chat: [['Tiago', '[montagem a gozar com o Diogo]'], ['Vários', '😂😂😂']],
-    q: 'Toda a gente está a pôr risos na montagem. O que fazes?',
-    o: [
-      ['Ponho também um emoji a rir, para não ficar de fora.', 'Cada riso faz o gozo crescer e magoa mais o Diogo.'],
-      ['Não participo, digo ao Diogo que estou do lado dele e conto a um adulto.', 'Quem assiste também pode parar o ciberbullying.'],
-      ['Reencaminho para outro grupo, para mais gente ver.', 'Espalhar a montagem também é fazer ciberbullying.'],
-    ], c: 1, rule: 'Se assistes a ciberbullying, não alimentes. Apoia quem está a ser gozado e conta a um adulto.' },
+/* ---------- cenários ---------- */
+const STEPS = [
+  { dia: 0, tema: 'Netiqueta', chat: 'grupo', type: 'choice',
+    msgs: () => [{ sys: true, t: 'Segunda-feira, 19:40' }, { who: 'Marta', color: '#c2417a', t: 'alguém sabe quando é o teste de matemática?' }],
+    task: 'A Marta perguntou no grupo. O que respondes?',
+    opts: [
+      { t: 'AMANHÃ!!!!! ESTUDA!!!', me: 'AMANHÃ!!!!! ESTUDA!!!', d: -10, k: 'bad', title: 'Estás a gritar.', why: 'Em maiúsculas e com muitos pontos de exclamação, a mensagem parece um grito, mesmo que não fosse essa a ideia.' },
+      { t: 'É amanhã, Marta. Bom estudo 🙂', me: 'É amanhã, Marta. Bom estudo 🙂', d: 10, k: 'ok', title: 'Clara e simpática.', why: 'Respondeste ao que ela perguntou, com calma e boa educação.', reply: [{ who: 'Marta', color: '#c2417a', t: 'obrigada!! 😊' }] },
+      { t: 'vai ver ao caderno, não sou teu secretário', me: 'vai ver ao caderno, não sou teu secretário', d: -10, k: 'bad', title: 'Desnecessário.', why: 'Custava o mesmo responder com simpatia. Respostas secas criam mau ambiente no grupo.' },
+    ],
+    rule: 'Escreve como falarias com alguém à tua frente. MAIÚSCULAS = GRITAR.' },
 
-  { tag: 'Ciberbullying', where: 'Jogo online',
-    chat: [['Jogador_X', 'és um nabo, sai do jogo'], ['Jogador_X', 'ninguém te quer aqui']],
-    q: 'O mesmo jogador manda-te mensagens destas todos os dias. O que fazes?',
-    o: [
-      ['Respondo com insultos ainda piores.', 'Responder costuma piorar a situação.'],
-      ['Apago tudo e não digo nada a ninguém.', 'Apagar faz-te perder as provas, e não tens de passar por isto sozinho.'],
-      ['Não respondo, tiro uma captura de ecrã, bloqueio, denuncio e conto a um adulto.', 'Guardar provas, bloquear e pedir ajuda é o caminho certo.'],
-    ], c: 2, rule: 'Não respondas, guarda provas, bloqueia e conta a um adulto. Linha Internet Segura: 800 21 90 90 (gratuita).' },
+  { dia: 0, tema: 'Reescrever com calma', chat: 'bruno', type: 'rewrite',
+    msgs: () => [{ who: 'Bruno', color: '#7a4fb5', t: 'alguém apagou o meu trabalho do Teams 😡 vou mandar isto para o grupo:' },
+                 { who: 'Bruno', color: '#7a4fb5', t: 'QUEM FOI QUE APAGOU O MEU TRABALHO??? SÃO TODOS UNS IDIOTAS' },
+                 { who: 'Bruno', color: '#7a4fb5', t: 'ajudas-me a escrever melhor? 🙏' }],
+    task: 'Reescreve a mensagem do Bruno para ele a poder enviar ao grupo.',
+    start: 'QUEM FOI QUE APAGOU O MEU TRABALHO??? SÃO TODOS UNS IDIOTAS',
+    rule: 'Quando estás zangado, espera um pouco e escreve com calma. Explica o problema sem atacar ninguém.' },
 
-  { tag: 'Privacidade', where: 'Recreio',
-    q: 'Tiraste uma foto muito engraçada de um amigo no recreio. Queres publicá-la.',
-    o: [
-      ['Publico logo, ele vai achar piada.', 'Talvez não ache. A foto é sobre ele, a decisão também é dele.'],
-      ['Peço-lhe autorização antes de publicar.', 'Cada pessoa decide o que se publica sobre si.'],
-      ['Publico, mas sem escrever o nome dele.', 'Mesmo sem o nome, toda a gente o reconhece.'],
-    ], c: 1, rule: 'Pede sempre autorização antes de publicar fotos ou vídeos de outras pessoas.' },
+  { dia: 1, tema: 'Mal-entendidos', chat: 'rita', type: 'choice',
+    msgs: () => [{ sys: true, t: 'Terça-feira, 17:15' }, { who: 'Rita', color: '#c2417a', t: 'estás tão bem nessa foto 😂' }],
+    task: 'Não sabes se a Rita está a elogiar-te ou a gozar contigo. O que fazes?',
+    opts: [
+      { t: 'Respondo: "e tu és ridícula 🙄"', me: 'e tu és ridícula 🙄', d: -15, k: 'bad', title: 'E se era um elogio?', why: 'Por escrito não há tom de voz nem cara. Reagiste a uma ideia que podia não ser verdade.', reply: [{ who: 'Rita', color: '#c2417a', t: '?? eu estava a elogiar-te… 😢' }] },
+      { t: 'Não respondo e deixo de falar com ela.', d: -5, k: 'mid', title: 'Ficas sem saber.', why: 'Afastar-te sem perguntar pode estragar uma amizade por causa de um mal-entendido.' },
+      { t: 'Pergunto: "estás a gozar ou a sério? 😅"', me: 'estás a gozar ou a sério? 😅', d: 10, k: 'ok', title: 'Boa ideia.', why: 'Perguntar com calma desfaz o mal-entendido antes de ele crescer.', reply: [{ who: 'Rita', color: '#c2417a', t: 'a sério!! ficou mesmo gira 😊 o 😂 era porque o cão aparece atrás' }] },
+    ],
+    rule: 'Antes de reagir, pergunta. Do outro lado está sempre uma pessoa real.' },
 
-  { tag: 'Netiqueta', where: 'Teams da turma',
-    chat: [['Professor', 'Que aplicação vamos usar para programar este período?']],
-    q: 'O professor fez esta pergunta no canal da turma. Como respondes?',
-    o: [
-      ['🤖🤖🤖🔥🔥🔥😎😎😎', 'Emojis a mais não respondem à pergunta e enchem o canal.'],
-      ['Vamos usar o Scratch.', 'Resposta clara e no tema. É assim que se usa o Teams da escola.'],
-      ['Alguém viu o jogo de ontem?', 'Fora do tema. O canal da turma é para assuntos da aula.'],
-    ], c: 1, rule: 'Adapta o comportamento ao espaço: o Teams da escola não é o grupo de amigos.' },
+  { dia: 2, tema: 'Ciberbullying', chat: 'grupo', type: 'choice',
+    msgs: () => [{ sys: true, t: 'Quarta-feira, 20:05' }, { who: 'Tiago', color: '#b8432f', t: '📷 [montagem com a cara do Diogo num corpo de pato]', img: true },
+                 { who: 'Tiago', color: '#b8432f', t: 'o pato Diogo 🦆😂😂' }, { who: 'Vários', color: '#586a7c', t: '😂😂😂' }],
+    task: 'Toda a gente está a pôr risos. O que fazes?',
+    opts: [
+      { t: 'Ponho também um 😂 para não ficar de fora.', me: '😂', d: -15, k: 'bad', flag: 'riu', title: 'Cada riso conta.', why: 'Cada riso faz o Tiago continuar e mostra ao Diogo que está sozinho.', reply: [{ sys: true, t: 'O Diogo saiu do grupo.' }] },
+      { t: 'Não me rio e escrevo ao Diogo em privado a dizer que estou do lado dele.', d: 15, k: 'ok', title: 'Fizeste diferença.', why: 'Quem assiste também pode parar o ciberbullying. Não alimentar o gozo e apoiar quem está a ser gozado é o primeiro passo.', reply: [{ who: 'Diogo', color: '#2f8a6b', t: '(em privado) obrigado… 😔' }] },
+      { t: 'Reencaminho a montagem para o grupo do futebol.', d: -20, k: 'bad', flag: 'espalhou', title: 'Agora é ainda maior.', why: 'Espalhar a montagem também é fazer ciberbullying. Agora há ainda mais gente a ver.', reply: [{ sys: true, t: 'A montagem já está em 3 grupos. O Diogo saiu do grupo.' }] },
+    ],
+    rule: 'Se assistes a ciberbullying, não alimentes. Apoia quem está a ser gozado.' },
 
-  { tag: 'Dados pessoais', where: 'Jogo online',
-    chat: [['Amigo_do_jogo', 'diz-me a tua morada e a tua escola, quero mandar-te uma prenda!']],
-    q: 'Conheceste esta pessoa num jogo e ela parece simpática. O que fazes?',
-    o: [
-      ['Dou a morada. Quem não gosta de prendas?', 'Nunca sabes quem está do outro lado. A morada é um dado pessoal.'],
-      ['Dou só o nome da escola.', 'A escola também diz onde estás todos os dias.'],
-      ['Não dou dados pessoais e conto a um adulto.', 'Morada, escola, telefone e fotos são dados pessoais. Ficam contigo.'],
-    ], c: 2, rule: 'Nunca dês dados pessoais a quem conheceste na Internet. Se insistirem, conta a um adulto.' },
+  { dia: 3, tema: 'Pedir ajuda', chat: 'diogo', type: 'choice',
+    msgs: () => [{ sys: true, t: 'Quinta-feira, 08:10' },
+                 ...(S.flags.riu || S.flags.espalhou ? [{ sys: true, t: 'Ontem não ajudaste, mas o Diogo escreve-te na mesma.' }] : []),
+                 { who: 'Diogo', color: '#2f8a6b', t: 'o Tiago continua a mandar coisas sobre mim' },
+                 { who: 'Diogo', color: '#2f8a6b', t: 'por favor não contes a ninguém, não quero que os professores saibam. isto passa.' }],
+    task: 'O Diogo pede-te segredo. O que fazes?',
+    opts: [
+      { t: 'Prometo que não conto a ninguém.', me: 'prometo, não conto a ninguém', d: -10, k: 'mid', title: 'Parece lealdade, mas deixa-o sozinho.', why: 'O ciberbullying raramente passa sozinho. Guardar este segredo não protege o Diogo.' },
+      { t: 'Digo-lhe que o vou ajudar e conto a um adulto de confiança (diretor de turma, professor ou pais).', d: 15, k: 'ok', title: 'É isto que um amigo faz.', why: 'Contar a um adulto não é fazer queixinhas: é pedir ajuda para quem precisa. Podes dizer ao Diogo que vais com ele.', me: 'vou ajudar-te. vamos contar à DT, eu vou contigo 🤝', reply: [{ who: 'Diogo', color: '#2f8a6b', t: 'está bem… obrigado por não me deixares sozinho' }] },
+      { t: 'Respondo: "isso não é nada, ignora."', me: 'isso não é nada, ignora', d: -10, k: 'bad', title: 'Para ele é muito.', why: 'Desvalorizar o que o Diogo sente faz com que ele fique ainda mais sozinho.' },
+    ],
+    rule: 'Se alguém está a ser magoado online, conta a um adulto de confiança. Linha Internet Segura: 800 21 90 90 (gratuita).' },
 
-  { tag: 'Pensar antes de escrever', where: 'Mensagem privada',
-    q: 'Estás muito zangado com um amigo por causa de uma mensagem dele. O que fazes?',
-    o: [
-      ['Escrevo logo tudo o que penso dele.', 'Zangado, escreves coisas de que te podes arrepender. E uma mensagem enviada não volta atrás.'],
-      ['Espero até me acalmar e falo com ele pessoalmente.', 'Com calma e cara a cara, resolve-se melhor.'],
-      ['Publico no grupo para toda a gente saber.', 'Expor uma zanga em público magoa e piora tudo.'],
-    ], c: 1, rule: 'Pensa antes de escrever. O que se publica na Internet pode ficar lá para sempre.' },
+  { dia: 3, tema: 'Dados pessoais', chat: 'jogo', type: 'sort',
+    msgs: () => [{ sys: true, t: 'Quinta-feira, 18:30' }, { who: 'Amigo_do_jogo', color: '#6d7b8a', t: 'és muito bom no jogo! vamos ser amigos 😄' },
+                 { who: 'Amigo_do_jogo', color: '#6d7b8a', t: 'conta-me coisas sobre ti! onde moras? que escola? manda uma foto!' }],
+    task: 'Esta pessoa conheceste-a num jogo online. O que podes partilhar com ela?',
+    items: [
+      ['O teu jogo preferido', true, 'Gostos gerais não dizem quem és nem onde estás.'],
+      ['A tua morada', false, 'Diz exatamente onde vives.'],
+      ['O nome da tua escola', false, 'Diz onde estás todos os dias.'],
+      ['A tua equipa de futebol', true, 'É um gosto, não identifica onde estás.'],
+      ['Uma fotografia tua', false, 'Mostra a tua cara e pode ser usada sem tu saberes.'],
+      ['O teu número de telemóvel', false, 'Permite contactar-te fora do jogo.'],
+      ['A tua cor preferida', true, 'Não diz nada sobre quem és.'],
+      ['A tua palavra-passe', false, 'A palavra-passe nunca se partilha, com ninguém.'],
+    ],
+    rule: 'Morada, escola, telefone, fotografias e palavras-passe ficam contigo. Se alguém insistir, conta a um adulto.' },
 
-  { tag: 'Cibersegurança', where: 'Sala de aula',
-    chat: [['Colega', 'dás-me a tua palavra-passe do Office 365? é só para ver uma coisa']],
-    q: 'É o teu melhor amigo que está a pedir. O que fazes?',
-    o: [
-      ['Dou, porque confio nele.', 'Com a tua palavra-passe, qualquer pessoa pode fazer coisas em teu nome.'],
-      ['Não dou. A palavra-passe é só minha e dos meus pais.', 'Nem aos melhores amigos. Uma palavra-passe é como a chave de casa.'],
-      ['Dou e mudo-a mais tarde.', 'Até a mudares, a tua conta fica nas mãos de outra pessoa.'],
-    ], c: 1, rule: 'A palavra-passe não se partilha com ninguém, só com os pais ou encarregados de educação.' },
+  { dia: 4, tema: 'Descobrir uma mensagem falsa', chat: 'caixa', type: 'spot',
+    msgs: () => [{ sys: true, t: 'Sexta-feira, 16:00 · recebeste três mensagens' }],
+    task: 'Uma destas mensagens é falsa e perigosa. Qual é?',
+    items: [
+      { from: 'Professor (Teams)', t: 'Lembrem-se de trazer o caderno de CEA na segunda-feira.', fake: false },
+      { from: 'Jogo Oficial 🎁', t: 'PARABÉNS!!! Ganhaste 5000 moedas! Entra JÁ em moedas-gratis.xyz e escreve o teu utilizador e palavra-passe. Só tens 10 minutos!', fake: true },
+      { from: 'Marta', t: 'alguém quer jogar à bola no intervalo de segunda?', fake: false },
+    ],
+    rule: 'Desconfia de prémios bons demais, de pressa ("só 10 minutos!"), de endereços estranhos e de qualquer pedido de palavra-passe.' },
 
-  { tag: 'Respeito pelo trabalho dos outros', where: 'Trabalho de casa',
-    q: 'Encontraste na Internet um texto perfeito para o teu trabalho. O que fazes?',
-    o: [
-      ['Copio tudo e entrego como sendo meu.', 'Isso é plágio: apresentar o trabalho de outra pessoa como teu.'],
-      ['Copio só metade, assim ninguém nota.', 'Continua a ser plágio, só que mais pequeno.'],
-      ['Escrevo com as minhas palavras e indico de onde tirei a informação.', 'Assim aprendes e respeitas quem escreveu o original.'],
-    ], c: 2, rule: 'Não te apropries do trabalho dos outros. Usa as tuas palavras e indica a fonte.' },
+  { dia: 4, tema: 'O que fazer com uma mensagem falsa', chat: 'caixa', type: 'choice',
+    msgs: () => [],
+    task: 'Já sabes que a mensagem das moedas é falsa. O que fazes com ela?',
+    opts: [
+      { t: 'Abro o endereço só para ver o que é.', d: -10, k: 'bad', reply: [{ sys: true, t: 'Abre-se uma página igual à do jogo a pedir o utilizador e a palavra-passe.' }], title: 'Melhor não.', why: 'Mesmo só para ver, alguns sites falsos tentam instalar programas ou enganar-te com páginas parecidas com as verdadeiras.' },
+      { t: 'Não abro, apago e aviso um adulto e os colegas.', d: 10, k: 'ok', title: 'Perfeito.', why: 'Assim não caíste no engano e ajudaste outros a não cair.', reply: [{ who: 'Tu → Grupo 5.º ano', color: '#1f8a4c', t: 'atenção: há uma mensagem falsa a prometer moedas grátis. não abram!' }] },
+      { t: 'Reencaminho para os amigos, para eles também ganharem moedas.', d: -15, k: 'bad', reply: [{ sys: true, t: 'Reencaminhaste para 5 amigos. Dois já escreveram lá a palavra-passe.' }], title: 'Espalhaste o engano.', why: 'Agora os teus amigos também podem dar a palavra-passe a quem os quer enganar.' },
+    ],
+    rule: 'Mensagem suspeita: não abras, não respondas, não reencaminhes. Apaga e avisa um adulto.' },
 ];
 
-const $ = id => document.getElementById(id);
-const game = $('game');
-let i = 0, points = 0, answered = false, order = [];
-
-function shuffle(a) { for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; }
-function esc(t) { return t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-
-function updateTop() {
-  const shown = Math.min(i + 1, S.length);
-  $('count').textContent = i < S.length ? `Situação ${shown} de ${S.length}` : 'Terminado';
-  $('pts').textContent = points + (points === 1 ? ' ponto' : ' pontos');
-  $('barFill').style.width = (i / S.length * 100) + '%';
+/* ---------- motor ---------- */
+async function play() {
+  const my = ++run;
+  if (S.step >= STEPS.length) return final();
+  const st = STEPS[S.step];
+  setDay(st.dia);
+  const prev = STEPS[S.step - 1];
+  if (!prev || prev.chat !== st.chat) setChat(st.chat);
+  $('panel').innerHTML = `<p class="hint">${esc(DIAS[st.dia])} · ${esc(st.tema)}</p>`;
+  await say(st.msgs());
+  if (my !== run) return;
+  ({ choice, rewrite, sort, spot })[st.type](st);
 }
 
-function show() {
-  answered = false; updateTop();
-  if (i >= S.length) return final();
-  const s = S[i];
-  order = shuffle([0, 1, 2]);
-  const chat = (s.chat || []).map(([who, msg]) => `<div class="bubble"><b>${esc(who)}</b>${esc(msg)}</div>`).join('');
-  game.innerHTML = `
-    <span class="tag">${esc(s.tag)}</span>
-    <p class="where">${esc(s.where)}</p>
-    ${chat ? `<div class="chat">${chat}</div>` : ''}
-    <p class="q">${esc(s.q)}</p>
-    <div class="opts">${order.map((oi, k) => `<button type="button" class="opt" data-oi="${oi}"><span class="l">${'ABC'[k]}</span><span>${esc(s.o[oi][0])}</span></button>`).join('')}</div>
-    <div id="fbBox"></div>`;
-  game.querySelectorAll('.opt').forEach(b => b.onclick = () => choose(+b.dataset.oi));
-  game.querySelector('.opt').focus({ preventScroll: true });
-}
-
-function choose(oi) {
-  if (answered) return; answered = true;
-  const s = S[i], ok = oi === s.c;
-  if (ok) points++;
-  game.querySelectorAll('.opt').forEach(b => {
-    const v = +b.dataset.oi; b.disabled = true;
-    if (v === s.c) b.classList.add('right');
-    else if (v === oi) b.classList.add('wrong');
-    else b.classList.add('dim');
+function choice(st) {
+  const order = st.opts.map((_, i) => i).sort(() => Math.random() - .5);
+  $('panel').innerHTML = `<p class="hint">${esc(DIAS[st.dia])} · ${esc(st.tema)}</p><p class="task">${esc(st.task)}</p>
+    <div class="opts">${order.map(i => `<button type="button" class="opt" data-i="${i}">${esc(st.opts[i].t)}</button>`).join('')}</div><div id="fb"></div>`;
+  const btns = [...$('panel').querySelectorAll('.opt')];
+  btns[0].focus({ preventScroll: true });
+  btns.forEach(b => b.onclick = async () => {
+    const o = st.opts[+b.dataset.i]; const my = run;
+    btns.forEach(x => { x.disabled = true; const oi = st.opts[+x.dataset.i]; x.classList.add(x === b ? (o.k === 'ok' ? 'good' : 'badc') : (oi.k === 'ok' ? 'good' : 'dim')); });
+    if (o.flag) S.flags[o.flag] = true;
+    setMeter(o.d); record(st, o.k === 'ok', o.title);
+    if (o.me) await say([{ me: true, t: o.me }]);
+    if (o.reply) await say(o.reply);
+    if (my !== run) return;
+    $('fb').innerHTML = feedback(o.k, o.title, o.why, st.rule); bindNext();
   });
-  const last = i === S.length - 1;
-  $('fbBox').innerHTML = `
-    <div class="fb ${ok ? 'ok' : 'bad'}">
-      <strong>${ok ? 'Boa escolha!' : 'Pensa melhor nesta.'}</strong>
-      <span>${esc(s.o[oi][1])}</span>
-      ${ok ? '' : `<span>A melhor opção: <b>${esc(s.o[s.c][0])}</b></span>`}
-      <span class="rule">${esc(s.rule)}</span>
-    </div>
-    <div class="row" style="margin-top:12px"><button type="button" class="btn" id="next">${last ? 'Ver resultado' : 'Próxima situação'}</button></div>`;
-  updateTop(); $('pts').textContent = points + (points === 1 ? ' ponto' : ' pontos');
-  $('next').onclick = () => { i++; show(); };
-  $('next').focus({ preventScroll: true });
+}
+
+function rewrite(st) {
+  $('panel').innerHTML = `<p class="hint">${esc(DIAS[st.dia])} · ${esc(st.tema)}</p><p class="task">${esc(st.task)}</p>
+    <textarea id="rw" aria-label="Mensagem reescrita">${esc(st.start)}</textarea>
+    <ul class="checks" id="ck"></ul>
+    <div class="row"><button type="button" class="btn" id="send" disabled>Enviar ao Bruno</button><button type="button" class="btn ghost" id="tip">Dá-me uma ideia</button></div><div id="fb"></div>`;
+  const ta = $('rw'), insult = /\b(idiotas?|estupid[oa]s?|burr[oa]s?|parv[oa]s?|otari[oa]s?|nab[oa]s?|imbecis|imbecil|cretin[oa]s?|palhac[oa]s?|odeio|cala-te|ridicul[oa]s?)\b/;
+  function check() {
+    const t = ta.value.trim(), letters = t.replace(/[^A-Za-zÀ-ÿ]/g, ''), caps = t.replace(/[^A-ZÀ-Þ]/g, '');
+    const c = [
+      ['Sem gritar (poucas maiúsculas)', !(letters.length >= 6 && caps.length / letters.length > 0.5)],
+      ['Sem pontuação a gritar (!!! ou ???)', !/[!?]{3,}/.test(t)],
+      ['Sem insultos', !insult.test(norm(t))],
+      ['Não acusa toda a gente ("todos")', !/\btodos\b/.test(norm(t))],
+      ['Explica o problema (pelo menos 6 palavras)', t.split(/\s+/).filter(Boolean).length >= 6],
+    ];
+    $('ck').innerHTML = c.map(([l, ok]) => `<li class="${ok ? 'pass' : ''}">${esc(l)}</li>`).join('');
+    $('send').disabled = !c.every(x => x[1]); return c;
+  }
+  ta.oninput = check; check(); ta.focus({ preventScroll: true });
+  $('tip').onclick = () => { $('tip').disabled = true; $('fb').innerHTML = '<div class="fb mid"><strong>Uma ideia</strong><span>Começa por dizer o que aconteceu e pede ajuda. Por exemplo: "Olá, o meu trabalho desapareceu do Teams. Alguém o apagou sem querer? Preciso dele para amanhã."</span></div>'; };
+  $('send').onclick = async () => {
+    const my = run; $('send').disabled = true; ta.disabled = true; $('tip').disabled = true;
+    setMeter(10); record(st, true, 'Mensagem reescrita sem gritos nem insultos');
+    await say([{ me: true, t: ta.value.trim() }, { who: 'Bruno', color: '#7a4fb5', t: 'muito melhor 👍 vou enviar esta' }, { sys: true, t: 'No grupo, a Marta responde: "fui eu sem querer!! desculpa, já o reponho 🙏"' }]);
+    if (my !== run) return;
+    $('fb').innerHTML = feedback('ok', 'Mensagem resolvida.', 'Sem gritos nem insultos, o problema resolveu-se em dois minutos. Com a mensagem original, o grupo ia acabar numa discussão.', st.rule); bindNext();
+  };
+}
+
+function sort(st) {
+  const order = st.items.map((_, i) => i).sort(() => Math.random() - .5), ans = {};
+  $('panel').innerHTML = `<p class="hint">${esc(DIAS[st.dia])} · ${esc(st.tema)}</p><p class="task">${esc(st.task)}</p>
+    <div class="cards">${order.map(i => `<div class="card" id="c${i}"><span>${esc(st.items[i][0])}</span>
+      <span class="pick" role="group" aria-label="${esc(st.items[i][0])}"><button type="button" data-i="${i}" data-v="1" aria-pressed="false">Partilho</button><button type="button" data-i="${i}" data-v="0" aria-pressed="false">Não partilho</button></span></div>`).join('')}</div>
+    <div class="row"><button type="button" class="btn" id="verify" disabled>Verificar</button><span class="hint" id="left"></span></div><div id="fb"></div>`;
+  const left = () => { const n = st.items.length - Object.keys(ans).length; $('left').textContent = n ? `Faltam ${n}` : ''; $('verify').disabled = n > 0; };
+  $('panel').querySelectorAll('.pick button').forEach(b => b.onclick = () => {
+    ans[b.dataset.i] = b.dataset.v === '1';
+    b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    left();
+  });
+  left(); $('panel').querySelector('.pick button').focus({ preventScroll: true });
+  $('verify').onclick = async () => {
+    const my = run; let right = 0;
+    $('panel').querySelectorAll('.pick button').forEach(b => b.disabled = true); $('verify').disabled = true;
+    st.items.forEach(([l, ok, why], i) => {
+      const good = ans[i] === ok; if (good) right++;
+      const c = $('c' + i); c.classList.add(good ? 'right' : 'wrong');
+      if (!good) c.insertAdjacentHTML('beforeend', `<span class="why">${ok ? 'Podes partilhar' : 'Não partilhes'}: ${esc(why)}</span>`);
+    });
+    const n = st.items.length, k = right === n ? 'ok' : right >= n - 2 ? 'mid' : 'bad';
+    setMeter(k === 'ok' ? 10 : k === 'mid' ? 0 : -10); record(st, k === 'ok', `${right} de ${n} certas`);
+    const protegeu = st.items.every(([, ok], i) => ok || ans[i] === false);
+    await say(protegeu
+      ? [{ me: true, t: 'gosto de futebol e jogos 😄 mas morada e fotos não dou, desculpa' }, { sys: true, t: 'O Amigo_do_jogo deixou de responder.' }]
+      : [{ me: true, t: 'aqui vai! 😄' }, { who: 'Amigo_do_jogo', color: '#6d7b8a', t: 'fixe!! agora manda mais fotos e diz a que horas sais da escola 📸' }]);
+    if (my !== run) return;
+    $('fb').innerHTML = feedback(k, `${right} de ${n} certas.`, protegeu ? (k === 'ok' ? 'Sabes bem o que fica contigo. Repara que, quando recusaste dar dados pessoais, a pessoa desapareceu: queria mesmo era a informação.' : 'Protegeste o mais importante, mas vê os cartões a vermelho. E repara que, quando recusaste dar dados pessoais, a pessoa desapareceu.') : 'Vê os cartões a vermelho. Repara que, quando deste dados pessoais, a pessoa pediu ainda mais. Nestes casos, não respondas, bloqueia e conta a um adulto.', st.rule);
+    bindNext();
+  };
+}
+
+function spot(st) {
+  $('msgs').insertAdjacentHTML('beforeend', st.items.map(m => `<div class="msg"><span class="who">${esc(m.from)}</span>${esc(m.t)}</div>`).join(''));
+  $('panel').innerHTML = `<p class="hint">${esc(DIAS[st.dia])} · ${esc(st.tema)}</p><p class="task">${esc(st.task)}</p>
+    <div class="opts">${st.items.map((m, i) => `<button type="button" class="opt" data-i="${i}">A mensagem de: ${esc(m.from)}</button>`).join('')}</div><div id="fb"></div>`;
+  const btns = [...$('panel').querySelectorAll('.opt')]; btns[0].focus({ preventScroll: true });
+  btns.forEach(b => b.onclick = () => {
+    const m = st.items[+b.dataset.i];
+    btns.forEach(x => { x.disabled = true; const it = st.items[+x.dataset.i]; x.classList.add(it.fake ? 'good' : x === b ? 'badc' : 'dim'); });
+    setMeter(m.fake ? 10 : -5); record(st, m.fake, m.fake ? 'Descobriste a mensagem falsa' : 'Confundiste uma mensagem verdadeira');
+    $('fb').innerHTML = feedback(m.fake ? 'ok' : 'bad', m.fake ? 'Descobriste!' : 'Essa é verdadeira.',
+      'A falsa é a do "Jogo Oficial": promete um prémio bom demais, tem pressa ("só 10 minutos"), usa um endereço estranho e pede a palavra-passe. Nenhum jogo a sério te pede a palavra-passe por mensagem.', st.rule);
+    bindNext();
+  });
 }
 
 function final() {
-  const badge = points >= 9 ? 'Cidadão digital exemplar' : points >= 7 ? 'Cidadão digital atento' : points >= 5 ? 'A caminho de ser um cidadão digital' : 'Vale a pena jogar outra vez';
-  game.innerHTML = `
-    <span class="tag">Resultado</span>
-    <p class="score">${points} / ${S.length}</p>
-    <p class="badge">${badge}</p>
+  run++; setDay(5); $('phone').hidden = true;
+  const ok = S.results.filter(r => r.ok).length, n = S.results.length;
+  const m = S.meter, verdict = m >= 80 ? 'O grupo ficou um sítio bom para estar, e muito graças a vocês.' : m >= 60 ? 'O grupo terminou a semana bem, mas houve dias complicados.' : m >= 40 ? 'Foi uma semana tensa no grupo. Vejam onde podiam ter decidido de outra forma.' : 'Foi uma semana difícil no grupo. Joguem outra vez e experimentem outras escolhas.';
+  $('panel').innerHTML = `<p class="hint">Resultado</p>
+    <p class="big">${ok} de ${n} boas decisões</p>
+    <p style="margin:0">${esc(verdict)}</p>
+    <ul class="summary">${S.results.map(r => `<li><span class="d">${esc(r.dia)}</span><span>${esc(r.tema)}</span><span class="r ${r.ok ? 'ok' : 'bad'}">${r.ok ? 'Boa decisão' : 'A rever'}</span></li>`).join('')}</ul>
     <ul class="gold">
       <li>Do outro lado está sempre uma pessoa real.</li>
       <li>Pensa antes de escrever e antes de publicar.</li>
       <li>Dados pessoais e palavras-passe ficam contigo.</li>
-      <li>Se algo te incomodar, conta a um adulto.</li>
+      <li>Se alguém está a ser magoado, conta a um adulto de confiança.</li>
     </ul>
-    <div style="display:grid;gap:8px;margin-top:6px">
-      <label for="regra">Escrevam uma regra para a Carta de Convivência Online da turma</label>
-      <textarea id="regra" placeholder="Exemplo: Antes de publicar uma foto de um colega, pedimos-lhe autorização."></textarea>
-      <div class="check" id="check">Escreve uma frase completa, com as vossas palavras.</div>
-      <p class="help">Depois, copiem a regra e publiquem-na no canal da equipa de CEA no Teams.</p>
-      <div class="row">
-        <button type="button" class="btn" id="copy">Copiar regra</button>
-        <button type="button" class="btn ghost" id="again">Jogar outra vez</button>
-      </div>
-    </div>`;
+    <label class="lbl" for="regra">Escrevam uma regra para a Carta de Convivência Online da turma</label>
+    <textarea id="regra" placeholder="Exemplo: Antes de publicar uma foto de um colega, pedimos-lhe autorização."></textarea>
+    <div class="check" id="check">Escrevam uma frase completa, com as vossas palavras.</div>
+    <div class="row"><button type="button" class="btn" id="copy">Copiar regra</button><button type="button" class="btn ghost" id="again">Jogar outra vez</button></div>`;
   const ta = $('regra'), ck = $('check');
   ta.oninput = () => {
     const t = ta.value.trim(), letters = t.replace(/[^A-Za-zÀ-ÿ]/g, ''), caps = t.replace(/[^A-ZÀ-Þ]/g, '');
-    if (!t) { ck.className = 'check'; ck.textContent = 'Escreve uma frase completa, com as vossas palavras.'; }
+    if (!t) { ck.className = 'check'; ck.textContent = 'Escrevam uma frase completa, com as vossas palavras.'; }
     else if (letters.length >= 6 && caps.length / letters.length > 0.6) { ck.className = 'check warn'; ck.textContent = 'Estão a gritar! Escrevam em minúsculas, com maiúscula só no início.'; }
     else if (t.split(/\s+/).length < 5) { ck.className = 'check warn'; ck.textContent = 'A regra está muito curta. Expliquem melhor o que se deve fazer.'; }
-    else { ck.className = 'check ok'; ck.textContent = 'Regra pronta para publicar.'; }
+    else { ck.className = 'check ok'; ck.textContent = 'Regra pronta.'; }
   };
   $('copy').onclick = () => {
     const t = ta.value.trim(); if (!t) { ta.focus(); return; }
     const done = () => { $('copy').textContent = 'Copiada'; setTimeout(() => $('copy').textContent = 'Copiar regra', 1800); };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => { ta.select(); });
-    else { ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => ta.select()); else ta.select();
   };
-  $('again').onclick = () => { i = 0; points = 0; show(); };
+  $('again').onclick = () => { reset(); setMeter(0); $('phone').hidden = false; setChat('grupo'); play(); window.scrollTo(0, 0); };
 }
 
-document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'TEXTAREA') return;
-  const k = e.key.toUpperCase();
-  if (!answered && 'ABC'.includes(k) && k.length === 1 && i < S.length) {
-    const b = game.querySelectorAll('.opt')['ABC'.indexOf(k)]; if (b) b.click();
-  }
-});
-
-show();
+reset(); setMeter(0); play();
 </script>
-
 </body>
 </html>
