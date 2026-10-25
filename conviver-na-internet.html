@@ -412,23 +412,7 @@ function final() {
       <li>Dados pessoais e palavras-passe ficam contigo.</li>
       <li>Se alguém está a ser magoado, conta a um adulto de confiança.</li>
     </ul>
-    <label class="lbl" for="regra">Escrevam uma regra para a Carta de Convivência Online da turma</label>
-    <textarea id="regra" placeholder="Exemplo: Antes de publicar uma foto de um colega, pedimos-lhe autorização."></textarea>
-    <div class="check" id="check">Escrevam uma frase completa, com as vossas palavras.</div>
-    <div class="row"><button type="button" class="btn" id="copy">Copiar regra</button><button type="button" class="btn ghost" id="again">Jogar outra vez</button></div>`;
-  const ta = $('regra'), ck = $('check');
-  ta.oninput = () => {
-    const t = ta.value.trim(), letters = t.replace(/[^A-Za-zÀ-ÿ]/g, ''), caps = t.replace(/[^A-ZÀ-Þ]/g, '');
-    if (!t) { ck.className = 'check'; ck.textContent = 'Escrevam uma frase completa, com as vossas palavras.'; }
-    else if (letters.length >= 6 && caps.length / letters.length > 0.6) { ck.className = 'check warn'; ck.textContent = 'Estão a gritar! Escrevam em minúsculas, com maiúscula só no início.'; }
-    else if (t.split(/\s+/).length < 5) { ck.className = 'check warn'; ck.textContent = 'A regra está muito curta. Expliquem melhor o que se deve fazer.'; }
-    else { ck.className = 'check ok'; ck.textContent = 'Regra pronta.'; }
-  };
-  $('copy').onclick = () => {
-    const t = ta.value.trim(); if (!t) { ta.focus(); return; }
-    const done = () => { $('copy').textContent = 'Copiada'; setTimeout(() => $('copy').textContent = 'Copiar regra', 1800); };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => ta.select()); else ta.select();
-  };
+    <div class="row"><button type="button" class="btn" id="again">Jogar outra vez</button></div>`;
   $('again').onclick = () => { reset(); setMeter(0); $('phone').hidden = false; setChat('grupo'); play(); window.scrollTo(0, 0); };
 }
 
