@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Gestão do Site</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* Layout: painel de uma coluna sobre papel quadriculado. Três estados: configuração inicial,
+   entrada com palavra-passe e painel com a lista de atividades (estado + data). */
+:root {
+  --bg: #f4f7fb; --grid: #dfe8f2; --paper: #ffffff; --line: #d3dfeb; --ink: #1b2a39; --muted: #586a7c;
+  --accent: #2a5d8f; --accent-ink: #ffffff; --robot: #e8692c;
+  --on: #1f8a4c; --on-bg: #e2f4e9; --off: #586a7c; --off-bg: #e9eef4; --sched: #8a5a00; --sched-bg: #fff1cc;
+  --ok-bg: #e2f4e9; --ok: #1f8a4c; --bad-bg: #fbe5e2; --bad: #b8432f;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Lexend", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1822; --grid: #182533; --paper: #172230; --line: #263647; --ink: #e8eef5; --muted: #9eb0c2;
+    --accent: #6aa7dd; --accent-ink: #0d1620; --robot: #f07a3e;
+    --on: #66d498; --on-bg: #173325; --off: #9eb0c2; --off-bg: #1f2c3a; --sched: #f5c533; --sched-bg: #3a2f10;
+    --ok-bg: #173325; --ok: #66d498; --bad-bg: #3a1d1a; --bad: #ff8a7a;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 48px;
+}
+.wrap { max-width: 780px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.9rem, 5vw, 2.5rem); margin: 0; line-height: 1.05; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.2rem; margin: 0; }
+.sub { margin: 4px 0 0; color: var(--muted); }
+.box { background: var(--paper); border: 2px solid var(--line); border-radius: 18px; padding: 20px; display: grid; gap: 14px; }
+.field { display: grid; gap: 6px; }
+label { font-weight: 600; font-size: .92rem; }
+input[type=password], input[type=datetime-local] {
+  font: 400 1rem var(--body); color: var(--ink); background: var(--bg); border: 2px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; width: 100%;
+}
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font: 600 .95rem var(--body); border-radius: 10px; padding: 10px 16px; border: 2px solid transparent; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+.btn.link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; font-weight: 500; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--robot); outline-offset: 2px; }
+.help { font-size: .88rem; color: var(--muted); margin: 0; }
+details { font-size: .92rem; }
+summary { cursor: pointer; font-weight: 600; }
+details ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+.msg { border-radius: 10px; padding: 10px 14px; font-size: .95rem; background: var(--off-bg); }
+.msg.ok { background: var(--ok-bg); color: var(--ok); }
+.msg.bad { background: var(--bad-bg); color: var(--bad); }
+
+/* Lista de atividades */
+.item { display: grid; gap: 10px; padding: 16px 0; border-top: 1px solid var(--line); }
+.item:first-child { border-top: 0; padding-top: 4px; }
+.item-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; justify-content: space-between; }
+.item h3 { font-family: var(--display); font-weight: 600; font-size: 1.15rem; margin: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .85rem; color: var(--muted); align-items: center; }
+.meta a { color: var(--accent); }
+.status { font-size: .8rem; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+.status.on { color: var(--on); background: var(--on-bg); }
+.status.off { color: var(--off); background: var(--off-bg); }
+.status.sched { color: var(--sched); background: var(--sched-bg); }
+.changed { font-size: .78rem; font-weight: 600; color: var(--robot); }
+.seg { display: inline-flex; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg label { font-size: .9rem; padding: 8px 14px; cursor: pointer; border-left: 2px solid var(--line); color: var(--muted); }
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + label { outline: 3px solid var(--robot); outline-offset: -3px; }
+.when { display: grid; gap: 6px; max-width: 280px; }
+.savebar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Gestão do Site</h1>
+      <p class="sub">Aulas do Prof. Leo · escolhe o que os alunos podem ver e quando.</p>
+    </div>
+    <button type="button" class="btn ghost" id="logout" hidden>Terminar sessão</button>
+  </header>
+
+  <div class="msg bad" id="insecure" hidden>Esta página tem de ser aberta com https:// para a palavra-passe funcionar. Muda o endereço para começar por https://.</div>
+  <div class="msg" id="topMsg" hidden></div>
+
+  <!-- Entrada -->
+  <section class="box" id="loginBox" hidden>
+    <h2>Entrar</h2>
+    <div class="field">
+      <label for="pass">Palavra-passe</label>
+      <input type="password" id="pass" autocomplete="current-password">
+    </div>
+    <div class="row">
+      <button type="button" class="btn" id="login">Entrar</button>
+      <button type="button" class="btn link" id="forgot">Esqueci-me da palavra-passe</button>
+    </div>
+    <div class="msg" id="loginMsg" hidden></div>
+  </section>
+
+  <!-- Configuração inicial -->
+  <section class="box" id="setupBox" hidden>
+    <h2 id="setupTitle">Configuração inicial</h2>
+    <p class="help" id="setupIntro">Faz-se só uma vez. Colas o token do GitHub e escolhes uma palavra-passe. O token fica guardado no repositório, cifrado com essa palavra-passe, e a partir daí basta a palavra-passe para entrar em qualquer browser.</p>
+    <div class="field">
+      <label for="token">Token de acesso do GitHub</label>
+      <input type="password" id="token" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+    </div>
+    <details>
+      <summary>Como criar o token</summary>
+      <ol>
+        <li>No GitHub: Settings da conta › Developer settings › Personal access tokens › Fine-grained tokens › Generate new token.</li>
+        <li>Validade: até ao fim do ano letivo.</li>
+        <li>Repository access: Only select repositories › profleoaf.</li>
+        <li>Permissions › Repository permissions › Contents: Read and write. Mais nenhuma.</li>
+        <li>Generate token e copiar logo (só é mostrado uma vez).</li>
+      </ol>
+    </details>
+    <div class="field">
+      <label for="newPass1">Palavra-passe nova</label>
+      <input type="password" id="newPass1" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="newPass2">Repetir a palavra-passe</label>
+      <input type="password" id="newPass2" autocomplete="new-password">
+    </div>
+    <p class="help">Usa pelo menos 12 caracteres. Uma frase com quatro ou mais palavras ao acaso funciona bem e é fácil de lembrar.</p>
+    <div class="row">
+      <button type="button" class="btn" id="setup">Guardar configuração</button>
+      <button type="button" class="btn ghost" id="setupCancel" hidden>Voltar</button>
+    </div>
+    <div class="msg" id="setupMsg" hidden></div>
+  </section>
+
+  <!-- Painel -->
+  <section class="box" id="panel" hidden>
+    <h2>Atividades</h2>
+    <div id="list"></div>
+    <div class="msg" id="saveMsg" hidden></div>
+    <div class="savebar">
+      <button type="button" class="btn" id="save" disabled>Guardar alterações</button>
+      <button type="button" class="btn ghost" id="reload">Recarregar</button>
+    </div>
+    <p class="help">Depois de guardar, o site atualiza em um ou dois minutos. As atividades agendadas abrem sozinhas na data escolhida, sem precisares de voltar aqui.</p>
+  </section>
+
+  <section class="box" id="security" hidden>
+    <h2>Mudar a palavra-passe</h2>
+    <div class="field">
+      <label for="chg1">Palavra-passe nova</label>
+      <input type="password" id="chg1" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="chg2">Repetir a palavra-passe</label>
+      <input type="password" id="chg2" autocomplete="new-password">
+    </div>
+    <div class="row"><button type="button" class="btn ghost" id="change">Mudar palavra-passe</button></div>
+    <div class="msg" id="changeMsg" hidden></div>
+  </section>
+</div>
+
+<script>
+const OWNER = 'w4lker19', REPO = 'profleoaf', BRANCH = 'main';
+const ACT_FILE = 'atividades.js', CFG_FILE = 'admin.json';
+const START = '/*ATIVIDADES-INICIO*/', END = '/*ATIVIDADES-FIM*/';
+const API = f => `https://api.github.com/repos/${OWNER}/${REPO}/contents/${f}`;
+const ITER = 600000;
+const $ = id => document.getElementById(id);
+const ESTADOS = [['visivel', 'Visível'], ['oculta', 'Oculta'], ['agendada', 'Agendada']];
+
+let token = '', cfg = null, cfgSha = null, actSha = '', actText = '', items = [], original = '';
+
+/* ---------- utilitários ---------- */
+function msg(id, kind, text) { const m = $(id); m.hidden = !text; m.className = 'msg ' + (kind || ''); m.textContent = text || ''; }
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function view(name) { ['loginBox', 'setupBox', 'panel', 'security'].forEach(id => $(id).hidden = true); $('logout').hidden = name !== 'panel';
+  if (name === 'panel') { $('panel').hidden = false; $('security').hidden = false; } else $(name).hidden = false; }
+const toB64 = bytes => { let s = ''; new Uint8Array(bytes).forEach(b => s += String.fromCharCode(b)); return btoa(s); };
+const fromB64 = s => Uint8Array.from(atob(s.replace(/\s/g, '')), c => c.charCodeAt(0));
+const textToB64 = t => toB64(new TextEncoder().encode(t));
+const b64ToText = s => new TextDecoder().decode(fromB64(s));
+function sessGet() { try { return sessionStorage.getItem('gh-token') || ''; } catch (e) { return ''; } }
+function sessSet(v) { try { v ? sessionStorage.setItem('gh-token', v) : sessionStorage.removeItem('gh-token'); } catch (e) {} }
+function pad(n) { return String(n).padStart(2, '0'); }
+function toLocalInput(iso) { if (!iso) return ''; const d = new Date(iso); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function fmt(iso) { return new Date(iso).toLocaleString('pt-PT', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }); }
+function fmtShort(iso) { const d = new Date(iso); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+
+/* ---------- cifra do token ---------- */
+async function deriveKey(pass, salt, iter) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function encryptToken(tok, pass) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(pass, salt, ITER);
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(tok));
+  return { versao: 1, kdf: 'PBKDF2-SHA256', iteracoes: ITER, salt: toB64(salt), iv: toB64(iv), cifra: toB64(ct) };
+}
+async function decryptToken(c, pass) {
+  const key = await deriveKey(pass, fromB64(c.salt), c.iteracoes);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(c.iv) }, key, fromB64(c.cifra));
+  return new TextDecoder().decode(pt);
+}
+
+/* ---------- GitHub ---------- */
+function h(withAuth) { const o = { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }; if (withAuth && token) o.Authorization = 'Bearer ' + token; return o; }
+async function getFile(f, withAuth) {
+  const r = await fetch(API(f) + '?ref=' + BRANCH + '&t=' + Date.now(), { headers: h(withAuth), cache: 'no-store' });
+  if (r.status === 404) return null;
+  if (r.status === 401) throw new Error('O token deixou de ser válido (pode ter expirado). Usa "Esqueci-me da palavra-passe" para configurar um token novo.');
+  if (r.status === 403) throw new Error('O GitHub recusou o pedido. Se acabaste de fazer muitas tentativas, espera alguns minutos.');
+  if (!r.ok) throw new Error('O GitHub respondeu com o erro ' + r.status + '. Tenta outra vez daqui a pouco.');
+  const j = await r.json(); return { sha: j.sha, text: b64ToText(j.content) };
+}
+async function putFile(f, text, sha, message) {
+  const body = { message, content: textToB64(text), branch: BRANCH }; if (sha) body.sha = sha;
+  const r = await fetch(API(f), { method: 'PUT', headers: { ...h(true), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (r.status === 409 || r.status === 422) throw new Error('O ficheiro foi alterado noutro sítio entretanto. Carrega em Recarregar e repete a alteração.');
+  if (r.status === 401) throw new Error('O token não é válido. Confirma que o copiaste inteiro.');
+  if (r.status === 403 || r.status === 404) throw new Error('O token não tem permissão para escrever. Confirma o repositório profleoaf e a permissão Contents: Read and write.');
+  if (!r.ok) throw new Error('O GitHub respondeu com o erro ' + r.status + '. Nada foi guardado.');
+  return (await r.json()).content.sha;
+}
+
+/* ---------- atividades ---------- */
+const snapshot = () => JSON.stringify(items.map(a => [a.estado, a.disponivelEm || null]));
+async function loadActivities() {
+  const f = await getFile(ACT_FILE, true);
+  if (!f) throw new Error('Não encontrei o atividades.js no repositório. Volta a carregar os ficheiros do zip.');
+  const a = f.text.indexOf(START), b = f.text.indexOf(END);
+  if (a < 0 || b < 0) throw new Error('O atividades.js não tem as marcas ATIVIDADES-INICIO e ATIVIDADES-FIM. Volta a carregar a versão do zip.');
+  actSha = f.sha; actText = f.text;
+  items = JSON.parse(f.text.slice(a + START.length, b)).map(x => {
+    if (!x.estado) x.estado = x.visivel ? 'visivel' : 'oculta';
+    delete x.visivel; if (x.disponivelEm === undefined) x.disponivelEm = null; return x;
+  });
+  original = snapshot();
+}
+function statusOf(a) {
+  const now = new Date();
+  if (a.estado === 'visivel') return ['on', 'Os alunos veem'];
+  if (a.estado === 'agendada') {
+    if (!a.disponivelEm) return ['sched', 'Escolhe a data'];
+    return new Date(a.disponivelEm) <= now ? ['on', 'Disponível desde ' + fmt(a.disponivelEm)] : ['sched', 'Abre ' + fmt(a.disponivelEm)];
+  }
+  return ['off', 'Oculta'];
+}
+function render() {
+  const orig = JSON.parse(original);
+  $('list').innerHTML = items.map((a, i) => {
+    const [cls, txt] = statusOf(a);
+    const changed = JSON.stringify([a.estado, a.disponivelEm || null]) !== JSON.stringify(orig[i]);
+    return `<div class="item">
+      <div class="item-head">
+        <div style="min-width:0">
+          <div class="meta"><span>${esc(a.disciplina)}</span><span>${esc(a.tema)}</span></div>
+          <h3>${esc(a.titulo)}</h3>
+        </div>
+        <span class="status ${cls}">${esc(txt)}</span>
+      </div>
+      <div class="row">
+        <div class="seg" role="radiogroup" aria-label="Estado de ${esc(a.titulo)}">
+          ${ESTADOS.map(([v, l]) => `<input type="radio" name="e${i}" id="e${i}${v}" value="${v}" data-i="${i}" ${a.estado === v ? 'checked' : ''}><label for="e${i}${v}">${l}</label>`).join('')}
+        </div>
+        <div class="meta"><a href="${esc(a.ficheiro)}#preview" target="_blank" rel="noopener">Pré-visualizar</a>${changed ? '<span class="changed">Por guardar</span>' : ''}</div>
+      </div>
+      ${a.estado === 'agendada' ? `<div class="when"><label for="d${i}">Fica disponível a</label><input type="datetime-local" id="d${i}" data-i="${i}" value="${toLocalInput(a.disponivelEm)}"></div>` : ''}
+    </div>`;
+  }).join('');
+  $('list').querySelectorAll('input[type=radio]').forEach(r => r.onchange = () => {
+    msg('saveMsg', '', ''); const a = items[+r.dataset.i]; a.estado = r.value;
+    if (a.estado !== 'agendada') a.disponivelEm = null;
+    render(); const el = a.estado === 'agendada' ? $('d' + r.dataset.i) : $('e' + r.dataset.i + r.value); if (el) el.focus();
+  });
+  $('list').querySelectorAll('input[type=datetime-local]').forEach(d => d.onchange = () => {
+    msg('saveMsg', '', ''); items[+d.dataset.i].disponivelEm = d.value ? new Date(d.value).toISOString() : null; render(); $('d' + d.dataset.i).focus();
+  });
+  $('save').disabled = snapshot() === original;
+}
+async function save() {
+  const falta = items.find(a => a.estado === 'agendada' && !a.disponivelEm);
+  if (falta) { msg('saveMsg', 'bad', 'Escolhe a data e a hora de "' + falta.titulo + '" antes de guardar.'); return; }
+  const orig = JSON.parse(original);
+  const changes = items.filter((a, i) => JSON.stringify([a.estado, a.disponivelEm || null]) !== JSON.stringify(orig[i]))
+    .map(a => a.titulo + ' ' + (a.estado === 'agendada' ? 'agendada para ' + fmtShort(a.disponivelEm) : a.estado === 'visivel' ? 'visível' : 'oculta'));
+  $('save').disabled = true; msg('saveMsg', '', 'A guardar…');
+  const a = actText.indexOf(START), b = actText.indexOf(END);
+  const novo = actText.slice(0, a + START.length) + JSON.stringify(items, null, 2) + actText.slice(b);
+  try {
+    actSha = await putFile(ACT_FILE, novo, actSha, 'Atividades: ' + changes.join('; '));
+    actText = novo; original = snapshot(); render();
+    msg('saveMsg', 'ok', 'Guardado: ' + changes.join('; ') + '. O site atualiza em um ou dois minutos.');
+  } catch (e) { msg('saveMsg', 'bad', e.message); $('save').disabled = false; }
+}
+
+/* ---------- fluxos ---------- */
+async function openPanel() {
+  await loadActivities(); view('panel'); msg('saveMsg', '', ''); render();
+}
+async function boot() {
+  if (!window.isSecureContext || !crypto.subtle) { $('insecure').hidden = false; return; }
+  msg('topMsg', '', 'A carregar…');
+  try {
+    const c = await getFile(CFG_FILE, false);
+    if (c) { cfg = JSON.parse(c.text); cfgSha = c.sha; }
+  } catch (e) { msg('topMsg', 'bad', e.message); return; }
+  msg('topMsg', '', '');
+  token = sessGet();
+  if (token && cfg) { try { await openPanel(); return; } catch (e) { sessSet(''); token = ''; } }
+  if (cfg) { view('loginBox'); $('pass').focus(); } else { setupMode(false); }
+}
+function setupMode(replace) {
+  view('setupBox');
+  $('setupTitle').textContent = replace ? 'Nova configuração' : 'Configuração inicial';
+  $('setupIntro').textContent = replace
+    ? 'Sem a palavra-passe antiga não é possível decifrar o token guardado. Cria um token novo no GitHub (e apaga o antigo), cola-o aqui e escolhe uma palavra-passe nova.'
+    : 'Faz-se só uma vez. Colas o token do GitHub e escolhes uma palavra-passe. O token fica guardado no repositório, cifrado com essa palavra-passe, e a partir daí basta a palavra-passe para entrar em qualquer browser.';
+  $('setupCancel').hidden = !replace; $('token').focus();
+}
+async function doSetup() {
+  const tok = $('token').value.trim(), p1 = $('newPass1').value, p2 = $('newPass2').value;
+  if (!tok) return msg('setupMsg', 'bad', 'Cola o token do GitHub.');
+  if (p1.length < 12) return msg('setupMsg', 'bad', 'A palavra-passe tem de ter pelo menos 12 caracteres.');
+  if (p1 !== p2) return msg('setupMsg', 'bad', 'As duas palavras-passe não são iguais.');
+  $('setup').disabled = true; msg('setupMsg', '', 'A verificar o token e a guardar a configuração…');
+  token = tok;
+  try {
+    await loadActivities();
+    const c = await getFile(CFG_FILE, true); cfgSha = c ? c.sha : null;
+    const enc = await encryptToken(tok, p1);
+    cfgSha = await putFile(CFG_FILE, JSON.stringify(enc, null, 2) + '\n', cfgSha, 'Configuração da página de gestão');
+    cfg = enc; sessSet(tok);
+    ['token', 'newPass1', 'newPass2'].forEach(id => $(id).value = '');
+    msg('setupMsg', '', ''); await openPanel(); msg('topMsg', 'ok', 'Configuração guardada. Da próxima vez, entra só com a palavra-passe.');
+  } catch (e) { token = ''; msg('setupMsg', 'bad', e.message); }
+  $('setup').disabled = false;
+}
+async function doLogin() {
+  const p = $('pass').value; if (!p) return msg('loginMsg', 'bad', 'Escreve a palavra-passe.');
+  $('login').disabled = true; msg('loginMsg', '', 'A entrar…');
+  try { token = await decryptToken(cfg, p); }
+  catch (e) { token = ''; $('login').disabled = false; return msg('loginMsg', 'bad', 'Palavra-passe errada.'); }
+  try { await openPanel(); sessSet(token); $('pass').value = ''; msg('loginMsg', '', ''); msg('topMsg', '', ''); }
+  catch (e) { token = ''; msg('loginMsg', 'bad', e.message); }
+  $('login').disabled = false;
+}
+async function doChange() {
+  const p1 = $('chg1').value, p2 = $('chg2').value;
+  if (p1.length < 12) return msg('changeMsg', 'bad', 'A palavra-passe tem de ter pelo menos 12 caracteres.');
+  if (p1 !== p2) return msg('changeMsg', 'bad', 'As duas palavras-passe não são iguais.');
+  $('change').disabled = true; msg('changeMsg', '', 'A guardar…');
+  try {
+    const c = await getFile(CFG_FILE, true); const enc = await encryptToken(token, p1);
+    cfgSha = await putFile(CFG_FILE, JSON.stringify(enc, null, 2) + '\n', c ? c.sha : null, 'Nova palavra-passe da página de gestão');
+    cfg = enc; $('chg1').value = $('chg2').value = '';
+    msg('changeMsg', 'ok', 'Palavra-passe mudada. Usa a nova da próxima vez que entrares.');
+  } catch (e) { msg('changeMsg', 'bad', e.message); }
+  $('change').disabled = false;
+}
+
+$('login').onclick = doLogin;
+$('pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+$('forgot').onclick = () => setupMode(true);
+$('setupCancel').onclick = () => { view('loginBox'); msg('setupMsg', '', ''); };
+$('setup').onclick = doSetup;
+$('save').onclick = save;
+$('reload').onclick = async () => { msg('saveMsg', '', 'A recarregar…'); try { await loadActivities(); render(); msg('saveMsg', '', ''); } catch (e) { msg('saveMsg', 'bad', e.message); } };
+$('change').onclick = doChange;
+$('logout').onclick = () => { sessSet(''); token = ''; items = []; view(cfg ? 'loginBox' : 'setupBox'); msg('topMsg', 'ok', 'Sessão terminada.'); };
+window.addEventListener('beforeunload', e => { if (items.length && snapshot() !== original) { e.preventDefault(); e.returnValue = ''; } });
+
+boot();
+</script>
+</body>
+</html>

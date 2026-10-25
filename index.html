@@ -4,84 +4,178 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aulas do Prof. Leo</title>
+<meta name="description" content="Atividades das aulas de CEA-STEAM e TIC do professor Leonardo Freitas.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lexend:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap">
+<script src="atividades.js"></script>
 <style>
-/* Layout: cabeçalho curto e uma lista de atividades por disciplina, em cartões clicáveis */
+/* Layout: caderno quadriculado. Cabeçalho com o robô mascote e um balão de fala;
+   por baixo, uma secção por disciplina com cartões de atividade (ícone + texto). */
 :root {
-  --bg: #eef3f8;
+  --bg: #f4f7fb;
+  --grid: #dfe8f2;
   --paper: #ffffff;
-  --line: #c9d8e8;
-  --ink: #1d2b3a;
-  --muted: #5a6b7d;
+  --line: #d3dfeb;
+  --ink: #1b2a39;
+  --muted: #586a7c;
   --accent: #2a5d8f;
   --robot: #e8692c;
-  --tag: #ffd9c4;
-  --tag-ink: #7a3412;
+  --robot-ink: #ffffff;
+  --sun: #f2b705;
+  --tile-a: #ffe6d8;
+  --tile-b: #dcebfa;
+  --tile-c: #fff1c2;
+  --tile-d: #dff3e6;
+  --new: #1f8a4c;
+  --new-bg: #e2f4e9;
   --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
   --body: "Lexend", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111a24; --paper: #18232f; --line: #2c3c4d; --ink: #e6edf4; --muted: #9aabbd;
-    --accent: #5b9bd5; --robot: #f07a3e; --tag: #5a3220; --tag-ink: #ffd9c4;
+    --bg: #0f1822; --grid: #182533; --paper: #172230; --line: #263647; --ink: #e8eef5; --muted: #9eb0c2;
+    --accent: #6aa7dd; --robot: #f07a3e; --robot-ink: #1a1009; --sun: #f5c533;
+    --tile-a: #3a2518; --tile-b: #1a2f45; --tile-c: #3a3112; --tile-d: #183226;
+    --new: #66d498; --new-bg: #173325;
     color-scheme: dark;
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
-  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.55;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 32px 40px;
+  padding-block: 36px 48px;
+  min-height: 100%;
 }
-.wrap { max-width: 820px; margin: 0 auto; display: grid; gap: 28px; }
-h1 { font-family: var(--display); font-weight: 600; font-size: clamp(2rem, 6vw, 2.8rem); margin: 0; line-height: 1.1; }
-.sub { margin: 6px 0 0; color: var(--muted); }
-h2 { font-family: var(--display); font-weight: 600; font-size: 1.3rem; margin: 0 0 12px; }
-.list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.wrap { max-width: 900px; margin: 0 auto; display: grid; gap: 36px; }
+
+/* Cabeçalho */
+.hero { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center; }
+.mascot { width: 104px; height: 104px; flex: none; }
+.mascot .eye { transform-origin: center; animation: blink 5s infinite; }
+@keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+.hero h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.1rem, 6.5vw, 3.2rem); line-height: 1.02; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.bubble {
+  position: relative; display: inline-block; margin-top: 12px; background: var(--paper); color: var(--ink);
+  border: 2px solid var(--line); border-radius: 16px; padding: 8px 14px; font-size: .98rem;
+}
+.bubble::before {
+  content: ""; position: absolute; left: -9px; top: 50%; width: 14px; height: 14px; background: var(--paper);
+  border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); transform: translateY(-50%) rotate(45deg);
+}
+@media (max-width: 520px) {
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .mascot { width: 76px; height: 76px; }
+  .bubble::before { display: none; }
+}
+
+/* Secções e cartões */
+.subject { display: grid; gap: 14px; }
+.subject-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.subject h2 { font-family: var(--display); font-weight: 600; font-size: 1.35rem; margin: 0; }
+.count { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; }
 a.card {
-  display: grid; gap: 8px; align-content: start; text-decoration: none; color: var(--ink);
-  background: var(--paper); border: 2px solid transparent; border-radius: 16px; padding: 18px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start;
+  text-decoration: none; color: var(--ink); background: var(--paper);
+  border: 2px solid var(--line); border-radius: 18px; padding: 18px;
+  transition: transform .15s ease, border-color .15s ease;
 }
-a.card:hover { border-color: var(--robot); }
-a.card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.tag { justify-self: start; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; background: var(--tag); color: var(--tag-ink); padding: 3px 10px; border-radius: 99px; }
-.card h3 { font-family: var(--display); font-weight: 600; font-size: 1.25rem; margin: 0; }
+a.card:hover { transform: translateY(-2px); border-color: var(--robot); }
+a.card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.tile { width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; }
+.tile svg { width: 40px; height: 40px; }
+.body { display: grid; gap: 6px; min-width: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tag { font-size: .74rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.new { font-size: .72rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--new); background: var(--new-bg); padding: 2px 8px; border-radius: 99px; }
+.card h3 { font-family: var(--display); font-weight: 600; font-size: 1.3rem; margin: 0; line-height: 1.2; }
 .card p { margin: 0; color: var(--muted); font-size: .95rem; }
-.go { color: var(--accent); font-weight: 600; font-size: .95rem; }
+.go { margin-top: 4px; font-weight: 600; font-size: .95rem; color: var(--accent); }
+.empty { background: var(--paper); border: 2px dashed var(--line); border-radius: 18px; padding: 22px; color: var(--muted); }
+
 footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 14px; }
+@media (prefers-reduced-motion: reduce) { a.card, .mascot .eye { transition: none; animation: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>Aulas do Prof. Leo</h1>
-    <p class="sub">Atividades para fazer nas aulas e em casa. Escolhe uma para começar.</p>
+  <header class="hero">
+    <svg class="mascot" viewBox="0 0 120 120" role="img" aria-label="Robô mascote">
+      <line x1="60" y1="10" x2="60" y2="24" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="60" cy="9" r="6" fill="var(--sun)"/>
+      <rect x="18" y="24" width="84" height="70" rx="20" fill="var(--robot)"/>
+      <rect x="30" y="38" width="60" height="34" rx="12" fill="var(--robot-ink)" opacity=".92"/>
+      <g class="eye"><circle cx="47" cy="55" r="6" fill="var(--ink)"/></g>
+      <g class="eye"><circle cx="73" cy="55" r="6" fill="var(--ink)"/></g>
+      <path d="M48 82 Q60 90 72 82" fill="none" stroke="var(--robot-ink)" stroke-width="4" stroke-linecap="round"/>
+      <rect x="8" y="48" width="10" height="24" rx="5" fill="var(--robot)"/>
+      <rect x="102" y="48" width="10" height="24" rx="5" fill="var(--robot)"/>
+      <rect x="36" y="96" width="14" height="14" rx="4" fill="var(--robot)"/>
+      <rect x="70" y="96" width="14" height="14" rx="4" fill="var(--robot)"/>
+    </svg>
+    <div>
+      <h1>Aulas do Prof. Leo</h1>
+      <span class="bubble" id="hello">Olá! Escolhe uma atividade para começar.</span>
+    </div>
   </header>
 
-  <section>
-    <h2>CEA-STEAM · 5.º ano</h2>
-    <div class="list">
-      <a class="card" href="conviver-na-internet.html">
-        <span class="tag">Cidadania digital</span>
-        <h3>Conviver na Internet</h3>
-        <p>10 situações do dia a dia sobre netiqueta, ciberbullying e dados pessoais. No fim, escreve uma regra para a turma.</p>
-        <span class="go">Abrir atividade →</span>
-      </a>
-      <a class="card" href="robo-programador.html">
-        <span class="tag">Algoritmia</span>
-        <h3>Robô Programador</h3>
-        <p>Escreve a sequência de instruções e leva o robô até ao tesouro. Seis níveis, cada um mais difícil.</p>
-        <span class="go">Abrir atividade →</span>
-      </a>
-    </div>
-  </section>
+  <main id="lista"></main>
+  <noscript><p class="empty">Para veres as atividades, ativa o JavaScript no browser.</p></noscript>
 
   <footer>Página pessoal do professor Leonardo Freitas, com materiais de apoio às aulas. Não é um site oficial do Agrupamento.</footer>
 </div>
+
+<script>
+(function () {
+  var ICONS = {
+    robo: '<svg viewBox="0 0 40 40" aria-hidden="true"><polygon points="20,2 26,9 14,9" fill="var(--robot)"/><rect x="6" y="9" width="28" height="25" rx="7" fill="var(--robot)"/><circle cx="14.5" cy="20" r="3.4" fill="var(--robot-ink)"/><circle cx="25.5" cy="20" r="3.4" fill="var(--robot-ink)"/><rect x="14" y="27" width="12" height="3" rx="1.5" fill="var(--robot-ink)"/></svg>',
+    conversa: '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M5 8h20a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4H14l-6 5v-5H5a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4z" fill="var(--accent)"/><path d="M33 15h2a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4h-2v5l-6-5h-6a4 4 0 0 1-4-4v-1h8a6 6 0 0 0 6-6z" fill="var(--robot)"/><circle cx="9" cy="16.5" r="2" fill="#fff"/><circle cx="15" cy="16.5" r="2" fill="#fff"/><circle cx="21" cy="16.5" r="2" fill="#fff"/></svg>',
+    codigo: '<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="3" y="6" width="34" height="28" rx="6" fill="var(--accent)"/><path d="M15 14l-6 6 6 6M25 14l6 6-6 6" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    microbit: '<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="3" y="8" width="34" height="24" rx="5" fill="var(--ink)"/><g fill="var(--sun)"><circle cx="15" cy="16" r="1.8"/><circle cx="20" cy="16" r="1.8"/><circle cx="25" cy="16" r="1.8"/><circle cx="15" cy="21" r="1.8"/><circle cx="25" cy="21" r="1.8"/><circle cx="17.5" cy="26" r="1.8"/><circle cx="22.5" cy="26" r="1.8"/></g><circle cx="8" cy="20" r="2.6" fill="var(--robot)"/><circle cx="32" cy="20" r="2.6" fill="var(--robot)"/></svg>',
+    seguranca: '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3l14 5v10c0 9-6 16-14 19C12 34 6 27 6 18V8z" fill="var(--accent)"/><path d="M13 20l5 5 9-10" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    estrela: '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3l5 11 12 1.3-9 8 2.6 11.7L20 29l-10.6 6 2.6-11.7-9-8L15 14z" fill="var(--sun)"/></svg>'
+  };
+  var TILES = { robo: '--tile-a', conversa: '--tile-b', codigo: '--tile-b', microbit: '--tile-c', seguranca: '--tile-d', estrela: '--tile-c' };
+  var SEMANA = 7 * 24 * 3600 * 1000;
+  var esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  function render() {
+    var agora = new Date();
+    var todas = window.ATIVIDADES || [];
+    var visiveis = todas.filter(function (a) { return window.atividadeDisponivel(a, agora); });
+    var grupos = {}, ordem = [];
+    visiveis.forEach(function (a) { if (!grupos[a.disciplina]) { grupos[a.disciplina] = []; ordem.push(a.disciplina); } grupos[a.disciplina].push(a); });
+    var html = ordem.map(function (d) {
+      var n = grupos[d].length;
+      return '<section class="subject"><div class="subject-head"><h2>' + esc(d) + '</h2><span class="count">' + n + (n === 1 ? ' atividade' : ' atividades') + '</span></div><div class="list">' +
+        grupos[d].map(function (a) {
+          var ic = ICONS[a.icone] ? a.icone : 'estrela';
+          var nova = a.estado === 'agendada' && a.disponivelEm && (agora - new Date(a.disponivelEm)) < SEMANA;
+          return '<a class="card" href="' + esc(a.ficheiro) + '"><span class="tile" style="background:var(' + TILES[ic] + ')">' + ICONS[ic] + '</span>' +
+            '<span class="body"><span class="meta"><span class="tag">' + esc(a.tema) + '</span>' + (nova ? '<span class="new">Nova</span>' : '') + '</span>' +
+            '<h3>' + esc(a.titulo) + '</h3><p>' + esc(a.descricao) + '</p><span class="go">Abrir atividade →</span></span></a>';
+        }).join('') + '</div></section>';
+    }).join('');
+    document.getElementById('lista').innerHTML = html || '<p class="empty">Ainda não há atividades disponíveis. Volta mais tarde!</p>';
+
+    // Se houver uma atividade agendada para as próximas horas, a página atualiza-se sozinha quando ela abrir
+    var proximas = todas.filter(function (a) { return a.estado === 'agendada' && a.disponivelEm && new Date(a.disponivelEm) > agora; })
+      .map(function (a) { return new Date(a.disponivelEm) - agora; }).sort(function (x, y) { return x - y; });
+    if (proximas.length && proximas[0] < 12 * 3600 * 1000) setTimeout(render, proximas[0] + 1000);
+  }
+  render();
+})();
+</script>
 </body>
 </html>
