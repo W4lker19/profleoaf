@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Robô Programador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* Layout: grelha de papel quadriculado à esquerda, painel de comandos à direita; empilha no telemóvel */
+:root {
+  --bg: #eef3f8;
+  --paper: #ffffff;
+  --line: #c9d8e8;
+  --ink: #1d2b3a;
+  --muted: #5a6b7d;
+  --robot: #e8692c;
+  --robot-ink: #ffffff;
+  --goal: #f2b705;
+  --rock: #6d7b8a;
+  --ok: #1f8a4c;
+  --ok-bg: #e2f4e9;
+  --bad: #c0392b;
+  --bad-bg: #fbe5e2;
+  --chip: #dde8f4;
+  --chip-active: #ffd9c4;
+  --btn: #2a5d8f;
+  --btn-ink: #ffffff;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Lexend", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111a24; --paper: #18232f; --line: #2c3c4d; --ink: #e6edf4; --muted: #9aabbd;
+    --robot: #f07a3e; --robot-ink: #1a1009; --goal: #f5c533; --rock: #8494a5;
+    --ok: #5fd08f; --ok-bg: #173325; --bad: #ff8a7a; --bad-bg: #3a1d1a;
+    --chip: #243445; --chip-active: #5a3220; --btn: #5b9bd5; --btn-ink: #0d1620;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111a24; --paper: #18232f; --line: #2c3c4d; --ink: #e6edf4; --muted: #9aabbd;
+  --robot: #f07a3e; --robot-ink: #1a1009; --goal: #f5c533; --rock: #8494a5;
+  --ok: #5fd08f; --ok-bg: #173325; --bad: #ff8a7a; --bad-bg: #3a1d1a;
+  --chip: #243445; --chip-active: #5a3220; --btn: #5b9bd5; --btn-ink: #0d1620;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: clamp(1.7rem, 4vw, 2.4rem); margin: 0; line-height: 1.1; }
+.sub { margin: 4px 0 0; color: var(--muted); }
+.levels { display: flex; flex-wrap: wrap; gap: 6px; }
+.levels button {
+  font: 600 1rem var(--display); width: 44px; height: 44px; border-radius: 10px;
+  border: 2px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer;
+}
+.levels button[aria-pressed="true"] { background: var(--robot); border-color: var(--robot); color: var(--robot-ink); }
+.levels button.done:not([aria-pressed="true"]) { border-color: var(--ok); color: var(--ok); }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); gap: 18px; align-items: start; }
+@media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+.board-card { background: var(--paper); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
+.level-title { font-family: var(--display); font-size: 1.25rem; margin: 0; }
+.level-goal { margin: 0; color: var(--muted); font-size: .95rem; }
+.board { display: grid; gap: 0; width: 100%; max-width: 520px; aspect-ratio: 1; margin: 0 auto; border: 2px solid var(--line); border-radius: 6px; overflow: hidden; }
+.cell { border: 1px solid var(--line); position: relative; display: grid; place-items: center; }
+.cell.rock { background: var(--rock); background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgba(0,0,0,.12) 6px 12px); }
+.cell.trail::after { content: ""; width: 22%; height: 22%; border-radius: 50%; background: var(--robot); opacity: .35; }
+.goal svg { width: 62%; height: 62%; }
+.robot { position: absolute; top: 0; left: 0; display: grid; place-items: center; transition: transform .35s ease; pointer-events: none; }
+.robot .body { width: 76%; height: 76%; transition: transform .3s ease; }
+.robot.crash .body { animation: shake .4s; }
+@keyframes shake { 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
+@media (prefers-reduced-motion: reduce) { .robot, .robot .body { transition: none; } .robot.crash .body { animation: none; } }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .85rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
+.panel { display: grid; gap: 14px; }
+.box { background: var(--paper); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
+.box h2 { font-family: var(--display); font-weight: 600; font-size: 1.1rem; margin: 0; }
+.cmds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cmd {
+  font: 500 .9rem var(--body); border: 2px solid var(--line); background: var(--bg); color: var(--ink);
+  border-radius: 12px; padding: 10px 4px; cursor: pointer; display: grid; justify-items: center; gap: 4px;
+}
+.cmd .ic { font-size: 1.7rem; line-height: 1; }
+.cmd:hover:not(:disabled) { border-color: var(--robot); }
+.program { min-height: 64px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; padding: 8px; border: 2px dashed var(--line); border-radius: 12px; }
+.program .empty { color: var(--muted); font-size: .9rem; align-self: center; }
+.chip {
+  font: 600 .95rem var(--body); display: inline-flex; align-items: center; gap: 3px;
+  background: var(--chip); color: var(--ink); border: 0; border-radius: 8px; padding: 6px 8px; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.chip small { font-size: .7rem; color: var(--muted); font-weight: 500; }
+.chip.active { background: var(--chip-active); outline: 2px solid var(--robot); }
+.chip.error { outline: 2px solid var(--bad); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: 600 .95rem var(--body); border-radius: 10px; padding: 10px 14px; border: 2px solid transparent; cursor: pointer; }
+.btn.primary { background: var(--robot); color: var(--robot-ink); }
+.btn.secondary { background: var(--btn); color: var(--btn-ink); }
+.btn.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible { outline: 3px solid var(--goal); outline-offset: 2px; }
+.msg { border-radius: 12px; padding: 12px 14px; font-size: .95rem; line-height: 1.45; background: var(--bg); }
+.msg.ok { background: var(--ok-bg); color: var(--ok); }
+.msg.bad { background: var(--bad-bg); color: var(--bad); }
+.msg b { font-weight: 600; }
+.stats { display: flex; gap: 18px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats strong { color: var(--ink); font-size: 1.1rem; }
+details { font-size: .92rem; line-height: 1.5; }
+summary { cursor: pointer; font-weight: 600; }
+details ol { padding-left: 20px; margin: 8px 0 0; }
+.hint { font-size: .82rem; color: var(--muted); margin: 0; }
+</style>
+<style>html,body{margin:0}.home{display:inline-block;margin-bottom:4px;font-size:.9rem;color:var(--muted);text-decoration:none}.home:hover{text-decoration:underline}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <a class="home" href="index.html">← Todas as atividades</a>
+  <header>
+    <div>
+      <h1>Robô Programador</h1>
+      <p class="sub">Escreve o algoritmo completo e só depois carrega em Executar.</p>
+    </div>
+    <nav class="levels" id="levels" aria-label="Escolher nível"></nav>
+  </header>
+
+  <div class="main">
+    <section class="board-card" aria-label="Grelha">
+      <h2 class="level-title" id="levelTitle">Nível 1</h2>
+      <p class="level-goal" id="levelGoal"></p>
+      <div class="board" id="board"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--robot)"></i>Robô (a ponta mostra para onde está virado)</span>
+        <span><i class="sw" style="background:var(--goal)"></i>Tesouro</span>
+        <span><i class="sw" style="background:var(--rock)"></i>Rocha</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="box">
+        <h2>1. Escreve o programa</h2>
+        <div class="cmds">
+          <button class="cmd" id="cmdF" type="button"><span class="ic">⬆</span>Avançar</button>
+          <button class="cmd" id="cmdL" type="button"><span class="ic">↰</span>Virar à esquerda</button>
+          <button class="cmd" id="cmdR" type="button"><span class="ic">↱</span>Virar à direita</button>
+        </div>
+        <div class="program" id="program" aria-live="polite"></div>
+        <p class="hint">Clica numa instrução para a apagar. No teclado: setas ↑ ← →, Delete apaga a última.</p>
+        <div class="row">
+          <button class="btn ghost" id="undo" type="button">Apagar última</button>
+          <button class="btn ghost" id="clear" type="button">Limpar tudo</button>
+        </div>
+      </div>
+
+      <div class="box">
+        <h2>2. Testa</h2>
+        <div class="row">
+          <button class="btn primary" id="run" type="button">▶ Executar</button>
+          <button class="btn secondary" id="step" type="button">Passo a passo</button>
+          <button class="btn ghost" id="reset" type="button">Robô à partida</button>
+        </div>
+        <div class="msg" id="msg" role="status">Planeia o caminho todo antes de executar.</div>
+        <div class="stats">
+          <span>Instruções: <strong id="nInstr">0</strong></span>
+          <span>Tentativas: <strong id="nTries">0</strong></span>
+        </div>
+      </div>
+
+      <div class="box">
+        <details>
+          <summary>Como se joga (em pares)</summary>
+          <ol>
+            <li>Um aluno é o <b>programador</b>: escreve o programa todo.</li>
+            <li>O outro é o <b>verificador</b>: antes de executar, segue o programa com o dedo na grelha e diz se acha que vai funcionar.</li>
+            <li>Carreguem em Executar. Se falhar, usem Passo a passo para encontrar a instrução errada e corrijam (isto chama-se <b>depurar</b>).</li>
+            <li>No nível seguinte, trocam de papéis.</li>
+          </ol>
+        </details>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+// Direções: 0 cima, 1 direita, 2 baixo, 3 esquerda
+const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
+const SYM = { F: '⬆', L: '↰', R: '↱' };
+const LEVELS = [
+  { n: 5, start: [0, 4, 0], goal: [0, 1], rocks: [], tip: 'Aquecimento: leva o robô até ao tesouro.' },
+  { n: 5, start: [0, 4, 0], goal: [2, 2], rocks: [], tip: 'Agora vais precisar de virar.' },
+  { n: 5, start: [0, 4, 0], goal: [4, 4], rocks: [[1,4],[2,4],[3,4]], tip: 'Há rochas no caminho. Contorna-as.' },
+  { n: 6, start: [0, 5, 1], goal: [5, 0], rocks: [[2,5],[2,4],[2,3],[4,2],[4,1],[4,0]], tip: 'Atenção: o robô começa virado para a direita.' },
+  { n: 6, start: [0, 0, 2], goal: [2, 2], rocks: [[1,1],[2,1],[3,1],[1,2],[3,2],[1,3],[3,3]], tip: 'O robô começa virado para baixo. Para que lado fica a esquerda dele?' },
+  { n: 6, start: [0, 5, 0], goal: [5, 5], rocks: [[1,1],[1,2],[1,3],[1,4],[1,5],[3,0],[3,1],[3,2],[3,3],[3,4]], tip: 'O labirinto final. Planeia bem antes de executar!' },
+];
+
+const $ = id => document.getElementById(id);
+let cur = 0, program = [], tries = 0, robot = null, stepIdx = 0, running = false, done = new Set();
+try { const saved = JSON.parse(localStorage.getItem('robo-done') || '[]'); saved.forEach(x => done.add(x)); } catch (e) {}
+
+function isRock(L, x, y) { return L.rocks.some(r => r[0] === x && r[1] === y); }
+function shortest(L) {
+  const key = (x, y, d) => x + ',' + y + ',' + d;
+  const q = [[...L.start, 0]], seen = new Set([key(...L.start)]);
+  while (q.length) {
+    const [x, y, d, c] = q.shift();
+    if (x === L.goal[0] && y === L.goal[1]) return c;
+    const nx = x + DX[d], ny = y + DY[d];
+    const nexts = [[x, y, (d + 3) % 4], [x, y, (d + 1) % 4]];
+    if (nx >= 0 && ny >= 0 && nx < L.n && ny < L.n && !isRock(L, nx, ny)) nexts.push([nx, ny, d]);
+    for (const s of nexts) { const k = key(...s); if (!seen.has(k)) { seen.add(k); q.push([...s, c + 1]); } }
+  }
+  return null;
+}
+
+const robotSVG = `<svg class="body" viewBox="0 0 40 40" aria-hidden="true">
+  <polygon points="20,1 27,9 13,9" fill="var(--robot)"/>
+  <rect x="6" y="9" width="28" height="26" rx="7" fill="var(--robot)"/>
+  <circle cx="14.5" cy="20" r="3.4" fill="var(--robot-ink)"/><circle cx="25.5" cy="20" r="3.4" fill="var(--robot-ink)"/>
+  <rect x="14" y="27" width="12" height="3" rx="1.5" fill="var(--robot-ink)"/></svg>`;
+const goalSVG = `<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3l5 11 12 1.3-9 8 2.6 11.7L20 29l-10.6 6 2.6-11.7-9-8L15 14z" fill="var(--goal)" stroke="var(--ink)" stroke-opacity=".25" stroke-width="1.2"/></svg>`;
+
+function buildLevels() {
+  $('levels').innerHTML = '';
+  LEVELS.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = i + 1;
+    b.setAttribute('aria-pressed', i === cur); b.setAttribute('aria-label', 'Nível ' + (i + 1));
+    if (done.has(i)) b.classList.add('done');
+    b.onclick = () => loadLevel(i);
+    $('levels').appendChild(b);
+  });
+}
+
+function loadLevel(i) {
+  cur = i; program = []; tries = 0; stepIdx = 0; running = false;
+  const L = LEVELS[i];
+  $('levelTitle').textContent = 'Nível ' + (i + 1) + ' de ' + LEVELS.length;
+  $('levelGoal').textContent = L.tip;
+  const board = $('board');
+  board.style.gridTemplateColumns = `repeat(${L.n}, 1fr)`;
+  board.style.gridTemplateRows = `repeat(${L.n}, 1fr)`;
+  board.innerHTML = '';
+  board.style.position = 'relative';
+  for (let y = 0; y < L.n; y++) for (let x = 0; x < L.n; x++) {
+    const c = document.createElement('div');
+    c.className = 'cell' + (isRock(L, x, y) ? ' rock' : '') + (x === L.goal[0] && y === L.goal[1] ? ' goal' : '');
+    c.dataset.x = x; c.dataset.y = y;
+    if (x === L.goal[0] && y === L.goal[1]) c.innerHTML = goalSVG;
+    board.appendChild(c);
+  }
+  const r = document.createElement('div');
+  r.className = 'robot'; r.id = 'robot'; r.innerHTML = robotSVG;
+  r.style.width = (100 / L.n) + '%'; r.style.height = (100 / L.n) + '%';
+  board.appendChild(r);
+  buildLevels(); resetRobot(); renderProgram();
+  setMsg('', 'Planeia o caminho todo antes de executar.');
+}
+
+function resetRobot() {
+  const L = LEVELS[cur];
+  robot = { x: L.start[0], y: L.start[1], d: L.start[2], turns: L.start[2] * 90 };
+  stepIdx = 0;
+  document.querySelectorAll('.cell.trail').forEach(c => c.classList.remove('trail'));
+  drawRobot(true);
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active', 'error'));
+}
+function drawRobot(instant) {
+  const r = $('robot');
+  if (instant) { r.style.transition = 'none'; r.firstElementChild.style.transition = 'none'; }
+  r.style.transform = `translate(${robot.x * 100}%, ${robot.y * 100}%)`;
+  r.firstElementChild.style.transform = `rotate(${robot.turns}deg)`;
+  if (instant) { r.offsetHeight; r.style.transition = ''; r.firstElementChild.style.transition = ''; }
+}
+function markTrail(x, y) {
+  const c = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+  if (c && !c.classList.contains('goal')) c.classList.add('trail');
+}
+
+function renderProgram() {
+  const p = $('program'); p.innerHTML = '';
+  if (!program.length) { p.innerHTML = '<span class="empty">O programa está vazio. Usa os botões acima.</span>'; }
+  program.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip';
+    b.innerHTML = `<small>${i + 1}</small>${SYM[c]}`;
+    b.title = 'Apagar esta instrução';
+    b.onclick = () => { if (running) return; program.splice(i, 1); resetRobot(); renderProgram(); };
+    p.appendChild(b);
+  });
+  $('nInstr').textContent = program.length;
+  $('nTries').textContent = tries;
+  const lock = running;
+  ['cmdF', 'cmdL', 'cmdR', 'undo', 'clear', 'reset'].forEach(id => $(id).disabled = lock);
+  $('run').disabled = lock || !program.length;
+  $('step').disabled = lock || !program.length;
+}
+function add(c) { if (running || program.length >= 60) return; if (stepIdx) resetRobot(); program.push(c); renderProgram(); }
+function setMsg(kind, html) { const m = $('msg'); m.className = 'msg' + (kind ? ' ' + kind : ''); m.innerHTML = html; }
+
+// Executa uma instrução; devolve null se correu bem, ou o texto do erro
+function exec(i) {
+  const L = LEVELS[cur], c = program[i];
+  if (c === 'L') { robot.d = (robot.d + 3) % 4; robot.turns -= 90; }
+  else if (c === 'R') { robot.d = (robot.d + 1) % 4; robot.turns += 90; }
+  else {
+    const nx = robot.x + DX[robot.d], ny = robot.y + DY[robot.d];
+    if (nx < 0 || ny < 0 || nx >= L.n || ny >= L.n) return `Na instrução <b>${i + 1}</b> o robô ia sair da grelha.`;
+    if (isRock(L, nx, ny)) return `Na instrução <b>${i + 1}</b> o robô bateu numa rocha.`;
+    markTrail(robot.x, robot.y); robot.x = nx; robot.y = ny;
+  }
+  drawRobot(false);
+  return null;
+}
+function highlight(i, err) {
+  document.querySelectorAll('.chip').forEach((c, j) => { c.classList.toggle('active', j === i && !err); c.classList.toggle('error', j === i && err); });
+}
+function crash(i, text) {
+  highlight(i, true);
+  const r = $('robot'); r.classList.remove('crash'); r.offsetHeight; r.classList.add('crash');
+  setMsg('bad', text + ' Corrige o programa e tenta outra vez. Dica: usa Passo a passo para veres onde falha.');
+}
+function finish() {
+  const L = LEVELS[cur];
+  if (robot.x === L.goal[0] && robot.y === L.goal[1]) {
+    done.add(cur); try { localStorage.setItem('robo-done', JSON.stringify([...done])); } catch (e) {}
+    const best = shortest(L);
+    let extra = program.length <= best
+      ? ` Usaste o menor número possível de instruções (${best}).`
+      : ` Desafio extra: dá para fazer só com <b>${best}</b> instruções. Consegues?`;
+    const next = cur < LEVELS.length - 1 ? ' Passem ao nível ' + (cur + 2) + ' e troquem de papéis.' : ' Terminaste todos os níveis!';
+    setMsg('ok', `<b>O robô chegou ao tesouro!</b> ${program.length} instruções, ${tries} ${tries === 1 ? 'tentativa' : 'tentativas'}.${extra}${next}`);
+    buildLevels();
+  } else {
+    setMsg('bad', 'O programa acabou, mas o robô não chegou ao tesouro. Faltam instruções, ou alguma está trocada?');
+  }
+}
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function runAll() {
+  if (!program.length) return;
+  resetRobot(); tries++; running = true; renderProgram();
+  setMsg('', 'A executar…');
+  const slow = matchMedia('(prefers-reduced-motion: reduce)').matches ? 150 : 480;
+  await wait(200);
+  for (let i = 0; i < program.length; i++) {
+    highlight(i, false);
+    const err = exec(i);
+    if (err) { running = false; renderProgram(); crash(i, err); return; }
+    await wait(slow);
+  }
+  running = false; renderProgram(); highlight(-1, false); finish();
+}
+function stepOne() {
+  if (!program.length) return;
+  if (stepIdx === 0) { resetRobot(); tries++; renderProgram(); }
+  if (stepIdx >= program.length) { resetRobot(); return stepOne(); }
+  const i = stepIdx;
+  highlight(i, false);
+  const err = exec(i);
+  if (err) { crash(i, err); stepIdx = program.length; return; }
+  stepIdx++;
+  if (stepIdx >= program.length) { highlight(-1, false); finish(); }
+  else setMsg('', `Instrução ${i + 1} de ${program.length} feita. Carrega outra vez em Passo a passo.`);
+}
+
+$('cmdF').onclick = () => add('F');
+$('cmdL').onclick = () => add('L');
+$('cmdR').onclick = () => add('R');
+$('undo').onclick = () => { program.pop(); resetRobot(); renderProgram(); };
+$('clear').onclick = () => { program = []; resetRobot(); renderProgram(); setMsg('', 'Programa apagado. Começa de novo.'); };
+$('reset').onclick = () => { resetRobot(); setMsg('', 'O robô voltou à partida.'); };
+$('run').onclick = runAll;
+$('step').onclick = stepOne;
+document.addEventListener('keydown', e => {
+  if (e.target.closest('summary')) return;
+  if (e.key === 'ArrowUp') { e.preventDefault(); add('F'); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); add('L'); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); add('R'); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { if (!running && program.length) { e.preventDefault(); program.pop(); resetRobot(); renderProgram(); } }
+  else if (e.key === 'Enter' && !e.target.closest('button')) { runAll(); }
+});
+
+loadLevel(0);
+</script>
+
+</body>
+</html>
