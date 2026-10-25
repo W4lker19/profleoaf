@@ -152,6 +152,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
 
   function render() {
     var agora = new Date();
+    var versao = Math.floor(agora / 60000); // evita que o browser abra uma versão antiga guardada em cache
     var todas = window.ATIVIDADES || [];
     var visiveis = todas.filter(function (a) { return window.atividadeDisponivel(a, agora); });
     var grupos = {}, ordem = [];
@@ -162,7 +163,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
         grupos[d].map(function (a) {
           var ic = ICONS[a.icone] ? a.icone : 'estrela';
           var nova = a.estado === 'agendada' && a.disponivelEm && (agora - new Date(a.disponivelEm)) < SEMANA;
-          return '<a class="card" href="' + esc(a.ficheiro) + '"><span class="tile" style="background:var(' + TILES[ic] + ')">' + ICONS[ic] + '</span>' +
+          return '<a class="card" href="' + esc(a.ficheiro) + '?v=' + versao + '"><span class="tile" style="background:var(' + TILES[ic] + ')">' + ICONS[ic] + '</span>' +
             '<span class="body"><span class="meta"><span class="tag">' + esc(a.tema) + '</span>' + (nova ? '<span class="new">Nova</span>' : '') + '</span>' +
             '<h3>' + esc(a.titulo) + '</h3><p>' + esc(a.descricao) + '</p><span class="go">Abrir atividade →</span></span></a>';
         }).join('') + '</div></section>';
