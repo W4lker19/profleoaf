@@ -243,7 +243,7 @@ function festejar() {
     s.style.setProperty('--dx', (Math.cos(i / 14 * 6.28) * 260) + 'px'); s.style.setProperty('--dy', (Math.sin(i / 14 * 6.28) * 200) + 'px');
     f.appendChild(s); setTimeout(() => s.remove(), 1200);
   }
-  setTimeout(() => { f.classList.remove('on'); document.body.classList.add('mostra-mais'); desenhar(false); $('b-mais').focus({ preventScroll: true }); }, 1500);
+  setTimeout(() => { f.classList.remove('on'); novaRonda(); }, 1700);
 }
 
 function marcar(attr, val) { document.querySelectorAll(`[data-${attr}]`).forEach(b => { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', String(b.dataset[attr] == val)); }); }
