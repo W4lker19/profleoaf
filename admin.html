@@ -272,7 +272,7 @@ function render() {
     return `<div class="item">
       <div class="item-head">
         <div style="min-width:0">
-          <div class="meta"><span>${esc(a.disciplina)}</span><span>${esc(a.tema)}</span></div>
+          <div class="meta">${a.pagina ? `<span>Página: ${esc(a.pagina)}</span>` : ''}<span>${esc(a.disciplina)}</span><span>${esc(a.tema)}</span></div>
           <h3>${esc(a.titulo)}</h3>
         </div>
         <span class="status ${cls}">${esc(txt)}</span>

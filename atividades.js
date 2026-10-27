@@ -3,7 +3,8 @@
 //   "estado": "visivel"  -> aparece já
 //   "estado": "oculta"   -> não aparece
 //   "estado": "agendada" -> aparece a partir de "disponivelEm" (data e hora em formato ISO)
-//   "icone": "robo", "conversa", "codigo", "microbit", "seguranca" ou "estrela"
+//   "icone": "robo", "conversa", "codigo", "microbit", "seguranca", "blocos" ou "estrela"
+//   "pagina": "pedro" -> a atividade aparece só em profleoaf.pt/pedro (e não na página principal)
 // Mantém o formato JSON (aspas duplas) entre as marcas ATIVIDADES-INICIO e ATIVIDADES-FIM.
 // Para ver uma atividade que ainda não está disponível, abre o endereço dela com #preview no fim.
 
@@ -37,6 +38,17 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "descricao": "Versão em quiz: 10 situações sobre netiqueta, ciberbullying e dados pessoais, com uma pergunta de cada vez.",
     "estado": "oculta",
     "disponivelEm": null
+  },
+  {
+    "ficheiro": "pedro/torres-de-cores.html",
+    "pagina": "pedro",
+    "disciplina": "CEA-STEAM",
+    "tema": "Cores e padrões",
+    "icone": "blocos",
+    "titulo": "Torres de cores",
+    "descricao": "Copiar torres de blocos, descobrir padrões e fazer torres de memória.",
+    "estado": "visivel",
+    "disponivelEm": null
   }
 ]/*ATIVIDADES-FIM*/;
 
@@ -52,7 +64,8 @@ window.atividadeDisponivel = function (a, agora) {
 // Proteção das páginas que ainda não estão disponíveis (não é preciso mexer aqui)
 (function () {
   var nome = decodeURIComponent(location.pathname.split('/').pop() || 'index.html').replace(/\.html$/i, '');
+  var base = function (f) { return f.split('/').pop().replace(/\.html$/i, ''); };
   if (nome === 'index' || nome === 'admin' || nome === '') return;
-  var a = window.ATIVIDADES.find(function (x) { return x.ficheiro.replace(/\.html$/i, '') === nome; });
-  if (a && !window.atividadeDisponivel(a) && location.hash !== '#preview') location.replace('index.html');
+  var a = window.ATIVIDADES.find(function (x) { return base(x.ficheiro) === nome; });
+  if (a && !window.atividadeDisponivel(a) && location.hash !== '#preview') location.replace(a.pagina ? '/' + a.pagina + '/' : '/');
 })();
