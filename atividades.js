@@ -57,7 +57,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "tema": "Caminhos e setas",
     "icone": "carro",
     "titulo": "Leva o carro à garagem",
-    "descricao": "Conduz o carro com as setas até à garagem da mesma cor, sem bater nos cones. No modo Programar, escolhe as setas todas antes de andar.",
+    "descricao": "Conduz o carro com as setas, passa pela bomba de gasolina e chega à garagem da mesma cor sem bater nos cones. No modo Programar, escolhe as setas todas antes de andar.",
     "estado": "visivel",
     "disponivelEm": null
   }

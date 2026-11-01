@@ -74,7 +74,7 @@
   <div class="barra" aria-label="Opções para a professora">
     <div class="contagem" id="contagem" aria-live="polite"></div>
     <div class="grupo"><span>Modo</span><button data-modo="conduzir" aria-pressed="true">Conduzir</button><button data-modo="programar" aria-pressed="false">Programar</button></div>
-    <div class="grupo"><span>Nível</span><button data-nivel="1" aria-pressed="true">1</button><button data-nivel="2" aria-pressed="false">2</button><button data-nivel="3" aria-pressed="false">3</button><button data-nivel="4" aria-pressed="false">4</button></div>
+    <div class="grupo"><span>Nível</span><button data-nivel="1" aria-pressed="true">1</button><button data-nivel="2" aria-pressed="false">2</button><button data-nivel="3" aria-pressed="false">3</button><button data-nivel="4" aria-pressed="false">4</button><button data-nivel="5" aria-pressed="false">5</button></div>
     <div class="grupo"><button id="b-som" aria-pressed="true">Som</button><button id="b-novo">Outro caminho</button><a href="/pedro/">← Início</a></div>
   </div>
 
@@ -99,12 +99,13 @@
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const CORES = ['vermelho', 'azul', 'amarelo', 'verde'];
 const COR = { vermelho: '#d7392b', azul: '#2b6fd7', amarelo: '#f5c518', verde: '#2ea043' };
-// Níveis: tamanho, distância mínima, cones, curva obrigatória, garagens
+// Níveis: tamanho, distância mínima e máxima, cones, garagens, bomba de gasolina pelo caminho
 const NIVEIS = {
-  1: { n: 4, min: 2, max: 3, cones: 0, curva: false, garagens: 1 },
-  2: { n: 4, min: 3, max: 5, cones: 0, curva: true, garagens: 1 },
-  3: { n: 5, min: 4, max: 7, cones: 4, curva: true, garagens: 1, desvio: true },
-  4: { n: 5, min: 4, max: 7, cones: 3, curva: true, garagens: 2 },
+  1: { n: 5, min: 5, max: 8, cones: 4, garagens: 1, desvio: true },
+  2: { n: 6, min: 7, max: 11, cones: 7, garagens: 1, desvio: true },
+  3: { n: 6, min: 7, max: 11, cones: 5, garagens: 1, bomba: true },
+  4: { n: 6, min: 8, max: 12, cones: 6, garagens: 2, bomba: true },
+  5: { n: 7, min: 10, max: 15, cones: 9, garagens: 2, bomba: true, desvio: true },
 };
 const st = { modo: 'conduzir', nivel: 1, som: true, mapa: null, carro: null, prog: [], ocupado: false, errou: false,
   stats: { conduzir: [0, 0], programar: [0, 0] } };
@@ -121,6 +122,11 @@ const carroSVG = c => `<svg viewBox="0 0 100 100" aria-hidden="true">
   <circle cx="33" cy="15" r="4.5" fill="#ffe58a" stroke="#1b2a39" stroke-width="2"/><circle cx="67" cy="15" r="4.5" fill="#ffe58a" stroke="#1b2a39" stroke-width="2"/></svg>`;
 const garagemSVG = c => `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M8 44 L50 10 L92 44 V92 H8 Z" fill="${COR[c]}" stroke="#1b2a39" stroke-width="5" stroke-linejoin="round"/>
   <rect x="24" y="50" width="52" height="42" fill="#fff" stroke="#1b2a39" stroke-width="4"/><path d="M24 61 H76 M24 72 H76 M24 83 H76" stroke="#9fb1c4" stroke-width="3"/></svg>`;
+const bombaSVG = ok => `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="22" y="14" width="44" height="76" rx="8" fill="${ok ? '#b8c6d6' : '#2a5d8f'}" stroke="#1b2a39" stroke-width="5"/>
+  <rect x="30" y="24" width="28" height="20" rx="4" fill="#fff" stroke="#1b2a39" stroke-width="3"/><rect x="16" y="84" width="56" height="10" rx="3" fill="#1b2a39"/>
+  <path d="M66 36 h8 a6 6 0 0 1 6 6 v30 a5 5 0 0 0 10 0 V40 l-8 -10" fill="none" stroke="#1b2a39" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44 54 c-7 9 -7 15 0 15 c7 0 7 -6 0 -15z" fill="#f5c518" stroke="#1b2a39" stroke-width="2.5"/>
+  ${ok ? '<circle cx="74" cy="20" r="16" fill="#2ea043" stroke="#1b2a39" stroke-width="4"/><path d="M66 20 l6 6 l10 -12" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>' : ''}</svg>`;
 const coneSVG = `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="16" y="78" width="68" height="12" rx="4" fill="#e8692c" stroke="#1b2a39" stroke-width="4"/>
   <path d="M36 78 L46 14 h8 L64 78 z" fill="#e8692c" stroke="#1b2a39" stroke-width="4" stroke-linejoin="round"/><path d="M41 52 h18 l2 10 h-22 z M44 33 h12 l1.5 8 h-15 z" fill="#fff"/></svg>`;
 
@@ -140,32 +146,43 @@ function buzina() {
 }
 
 // caminho mais curto (só setas: cima, baixo, esquerda, direita)
-function bfs(m, from) {
+function bfs(m, from, bloq) {
   const dist = {}; const q = [from]; dist[from] = 0;
   while (q.length) { const k = q.shift(); const [x, y] = k.split(',').map(Number);
     for (let d = 0; d < 4; d++) { const nx = x + DX[d], ny = y + DY[d], nk = nx + ',' + ny;
       if (nx < 0 || ny < 0 || nx >= m.n || ny >= m.n || m.cones.has(nk) || nk in dist) continue;
       if (m.outra && nk === m.outra) continue;
+      if (bloq && nk === bloq) continue;
       dist[nk] = dist[k] + 1; q.push(nk); } }
   return dist;
 }
 function gerar() {
   const L = NIVEIS[st.nivel];
-  for (let t = 0; t < 2000; t++) {
+  const k = p => p[0] + ',' + p[1];
+  for (let t = 0; t < 5000; t++) {
     const n = L.n, cor = CORES[rnd(4)];
-    const m = { n, cor, cones: new Set(), outra: null, outraCor: null };
+    const m = { n, cor, cones: new Set(), outra: null, outraCor: null, bomba: null };
     const ini = [rnd(n), rnd(n)], gar = [rnd(n), rnd(n)];
-    const k = p => p[0] + ',' + p[1];
-    if (k(ini) === k(gar)) continue;
-    const man = Math.abs(ini[0] - gar[0]) + Math.abs(ini[1] - gar[1]);
-    if (L.curva ? (ini[0] === gar[0] || ini[1] === gar[1]) : (ini[0] !== gar[0] && ini[1] !== gar[1])) continue;
-    while (m.cones.size < L.cones) { const c = [rnd(n), rnd(n)]; if (k(c) !== k(ini) && k(c) !== k(gar)) m.cones.add(k(c)); }
-    if (L.garagens === 2) { let o; let tries = 0; do { o = [rnd(n), rnd(n)]; tries++; } while ((k(o) === k(ini) || k(o) === k(gar) || m.cones.has(k(o))) && tries < 50);
-      m.outra = k(o); m.outraCor = CORES.filter(c => c !== cor)[rnd(3)]; }
-    const dist = bfs(m, k(ini))[k(gar)];
-    if (dist === undefined || dist < L.min || dist > L.max) continue;
-    if (L.desvio && dist === man) continue;           // os cones têm de obrigar a dar a volta
-    if (L.garagens === 2) { const dO = Math.abs(ini[0] - +m.outra.split(',')[0]) + Math.abs(ini[1] - +m.outra.split(',')[1]); if (dO > dist + 1) continue; } // a garagem errada também fica perto
+    if (k(ini) === k(gar) || (ini[0] === gar[0] || ini[1] === gar[1])) continue;
+    let guard = 0; while (m.cones.size < L.cones && guard++ < 200) { const c = [rnd(n), rnd(n)]; if (k(c) !== k(ini) && k(c) !== k(gar)) m.cones.add(k(c)); }
+    const livre = c => k(c) !== k(ini) && k(c) !== k(gar) && !m.cones.has(k(c)) && k(c) !== m.outra && k(c) !== m.bomba;
+    if (L.garagens === 2) { let o, g2 = 0; do { o = [rnd(n), rnd(n)]; } while (!livre(o) && g2++ < 60); if (!livre(o)) continue; m.outra = k(o); m.outraCor = CORES.filter(c => c !== cor)[rnd(3)]; }
+    if (L.bomba) { let b, g3 = 0; do { b = [rnd(n), rnd(n)]; } while (!livre(b) && g3++ < 60); if (!livre(b)) continue; m.bomba = k(b); }
+    let dist;
+    if (m.bomba) {
+      const d1 = bfs(m, k(ini), k(gar))[m.bomba], d2 = bfs(m, m.bomba)[k(gar)];
+      if (d1 === undefined || d2 === undefined || d1 < 3 || d2 < 3) continue;
+      const direto = bfs(m, k(ini))[k(gar)];
+      if (direto !== undefined && d1 + d2 - direto < 2) continue;   // a bomba tem de obrigar a um desvio
+      dist = d1 + d2;
+    } else {
+      dist = bfs(m, k(ini))[k(gar)];
+      if (dist === undefined) continue;
+      const man = Math.abs(ini[0] - gar[0]) + Math.abs(ini[1] - gar[1]);
+      if (L.desvio && dist === man) continue;           // os cones têm de obrigar a dar a volta
+    }
+    if (dist < L.min || dist > L.max) continue;
+    if (L.garagens === 2) { const [ox, oy] = m.outra.split(',').map(Number); if (Math.abs(ini[0] - ox) + Math.abs(ini[1] - oy) > dist) continue; }
     m.ini = ini; m.gar = gar; m.min = dist; return m;
   }
   return null;
@@ -191,12 +208,18 @@ function desenhar() {
     const c = document.createElement('div'); c.className = 'casa'; c.dataset.k = x + ',' + y;
     if (x === m.gar[0] && y === m.gar[1]) c.innerHTML = garagemSVG(m.cor);
     else if (m.outra === x + ',' + y) c.innerHTML = garagemSVG(m.outraCor);
+    else if (m.bomba === x + ',' + y) c.innerHTML = bombaSVG(st.gasolina);
     else if (m.cones.has(x + ',' + y)) c.innerHTML = coneSVG;
     t.appendChild(c);
   }
   const car = document.createElement('div'); car.className = 'carro'; car.id = 'carro'; car.innerHTML = carroSVG(m.cor); t.appendChild(car);
-  $('missao').innerHTML = `${carroSVG(m.cor)}<span>→</span>${garagemSVG(m.cor)}`;
+  missao();
   tamanhos();
+}
+function missao() {
+  const m = st.mapa;
+  const extra = st.modo === 'programar' ? `<small style="font-size:15px;color:var(--muted);font-weight:400;margin-left:6px">${st.prog.length} setas (mínimo ${m.min})</small>` : '';
+  $('missao').innerHTML = `${carroSVG(m.cor)}<span>→</span>${m.bomba ? bombaSVG(st.gasolina) + '<span>→</span>' : ''}${garagemSVG(m.cor)}${extra}`;
 }
 function desenharCarro(instant) {
   const car = $('carro'); if (!car) return;
@@ -210,7 +233,7 @@ function desenharCarro(instant) {
 function contagem() { const s = st.stats[st.modo]; $('contagem').innerHTML = `${st.modo === 'conduzir' ? 'Conduzir' : 'Programar'} · nível ${st.nivel}: <b>${s[0]}</b> feitas · <b>${s[1]}</b> à primeira`; }
 
 function novo() {
-  st.mapa = gerar(); st.carro = { x: st.mapa.ini[0], y: st.mapa.ini[1], d: 0 }; st.prog = []; st.ocupado = false; st.errou = false;
+  st.mapa = gerar(); st.carro = { x: st.mapa.ini[0], y: st.mapa.ini[1], d: 0 }; st.prog = []; st.ocupado = false; st.errou = false; st.gasolina = false;
   // o carro começa virado para a garagem quando dá
   const g = st.mapa.gar; st.carro.d = g[1] < st.carro.y ? 0 : g[0] > st.carro.x ? 1 : g[1] > st.carro.y ? 2 : 3;
   desenhar(); desenharPrograma(); contagem(); bloquear(false);
@@ -218,7 +241,7 @@ function novo() {
 function bloquear(b) { document.querySelectorAll('.seta, #b-andar, #b-apagar').forEach(x => x.disabled = b); if (!b && st.modo === 'programar') $('b-andar').disabled = !st.prog.length; }
 
 function desenharPrograma(ativo, erro) {
-  const p = $('programa');
+  const p = $('programa'); if (st.mapa) missao();
   if (!st.prog.length) { p.innerHTML = '<span class="vazio">Escolhe as setas</span>'; return; }
   p.innerHTML = st.prog.map((d, i) => `<i class="${i === ativo ? (erro ? 'erro' : 'agora') : ''}">${setaSVG(d)}</i>`).join('');
 }
@@ -230,7 +253,8 @@ function mover(d) {
   if (nx < 0 || ny < 0 || nx >= m.n || ny >= m.n || m.cones.has(k)) { desenharCarro(); return 'bate'; }
   const casaAnt = document.querySelector(`.casa[data-k="${c.x},${c.y}"]`); if (casaAnt && !casaAnt.innerHTML) casaAnt.classList.add('rasto');
   c.x = nx; c.y = ny; desenharCarro();
-  if (nx === m.gar[0] && ny === m.gar[1]) return 'chegou';
+  if (m.bomba === k && !st.gasolina) { st.gasolina = true; const casa = document.querySelector(`.casa[data-k="${k}"]`); if (casa) casa.innerHTML = bombaSVG(true); missao(); return 'bomba'; }
+  if (nx === m.gar[0] && ny === m.gar[1]) return m.bomba && !st.gasolina ? 'semgasolina' : 'chegou';
   if (m.outra === k) return 'errada';
   return 'ok';
 }
@@ -250,23 +274,25 @@ function chegou() {
 
 function voltarPartida() {
   const m = st.mapa; st.carro = { x: m.ini[0], y: m.ini[1], d: st.carro.d };
+  if (m.bomba && st.gasolina) { st.gasolina = false; const casa = document.querySelector(`.casa[data-k="${m.bomba}"]`); if (casa) casa.innerHTML = bombaSVG(false); missao(); }
   document.querySelectorAll('.casa.rasto').forEach(c => c.classList.remove('rasto')); desenharCarro();
 }
 
 async function andar() {
   if (st.ocupado || !st.prog.length) return;
-  st.ocupado = true; bloquear(true); voltarPartida();
+  st.ocupado = true; st.ultimaFala = false; bloquear(true); voltarPartida();
   await new Promise(r => setTimeout(r, 300));
   for (let i = 0; i < st.prog.length; i++) {
     desenharPrograma(i);
     const r = mover(st.prog[i]);
     await new Promise(r => setTimeout(r, 520));
     if (r === 'chegou') { st.ocupado = false; desenharPrograma(i); return chegou(); }
-    if (r === 'bate' || r === 'errada') { desenharPrograma(i, true); if (r === 'bate') bate(); else st.errou = true; break; }
+    if (r === 'bomba') falar('Gasolina!');
+    if (r === 'bate' || r === 'errada' || r === 'semgasolina') { desenharPrograma(i, true); if (r === 'bate') bate(); else { st.errou = true; st.ultimaFala = true; falar(r === 'errada' ? 'Esta garagem não é desta cor.' : 'Primeiro, a gasolina!'); } break; }
   }
   // não chegou: volta à partida, o programa fica para corrigir
   st.errou = true;
-  if (!(st.carro.x === st.mapa.gar[0] && st.carro.y === st.mapa.gar[1])) falar('Quase! Vamos corrigir.');
+  if (!st.ultimaFala) falar('Quase! Vamos corrigir.');
   await new Promise(r => setTimeout(r, 900));
   voltarPartida(); st.ocupado = false; bloquear(false); desenharPrograma();
 }
@@ -278,8 +304,10 @@ document.querySelectorAll('.seta').forEach(b => { b.innerHTML = setaSVG(+b.datas
     if (r === 'bate') bate();
     else if (r === 'chegou') chegou();
     else if (r === 'errada') { st.errou = true; falar('Esta garagem não é desta cor.'); }
+    else if (r === 'semgasolina') { st.errou = true; falar('Primeiro, a gasolina!'); }
+    else if (r === 'bomba') { falar('Gasolina!'); }
   } else {
-    if (st.prog.length >= 12) return; st.prog.push(d); desenharPrograma(); bloquear(false);
+    if (st.prog.length >= 20) return; st.prog.push(d); desenharPrograma(); bloquear(false);
   }
 }); });
 $('b-andar').addEventListener('click', andar);
