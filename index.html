@@ -102,6 +102,19 @@ a.card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .card h3 { font-family: var(--display); font-weight: 600; font-size: 1.3rem; margin: 0; line-height: 1.2; }
 .card p { margin: 0; color: var(--muted); font-size: .95rem; }
 .go { margin-top: 4px; font-weight: 600; font-size: .95rem; color: var(--accent); }
+.tabs { display: inline-flex; gap: 6px; padding: 5px; background: var(--paper); border: 2px solid var(--line); border-radius: 16px; justify-self: start; max-width: 100%; }
+.tabs button {
+  font: 600 1rem var(--display); color: var(--muted); background: none; border: 0; border-radius: 11px;
+  padding: 8px 16px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center;
+}
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { background: var(--robot); color: var(--robot-ink); }
+.tabs button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.tabs .n { font: 600 .78rem var(--body); background: var(--bg); color: var(--muted); border-radius: 99px; padding: 1px 8px; font-variant-numeric: tabular-nums; }
+.tabs button[aria-selected="true"] .n { background: rgba(255,255,255,.25); color: inherit; }
+.main { display: grid; gap: 22px; min-width: 0; }
+.panel { display: grid; gap: 36px; }
+.panel:focus { outline: none; }
 .empty { background: var(--paper); border: 2px dashed var(--line); border-radius: 18px; padding: 22px; color: var(--muted); }
 
 footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 14px; }
@@ -130,7 +143,14 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
     </div>
   </header>
 
-  <main id="lista"></main>
+  <main class="main">
+    <div class="tabs" role="tablist" aria-label="O que queres ver">
+      <button type="button" role="tab" id="tab-atividades" aria-controls="lista" aria-selected="true">Atividades <span class="n" id="n-atividades">0</span></button>
+      <button type="button" role="tab" id="tab-formularios" aria-controls="formularios" aria-selected="false" tabindex="-1">Formulários <span class="n" id="n-formularios">0</span></button>
+    </div>
+    <div class="panel" id="lista" role="tabpanel" aria-labelledby="tab-atividades" tabindex="-1"></div>
+    <div class="panel" id="formularios" role="tabpanel" aria-labelledby="tab-formularios" tabindex="-1" hidden></div>
+  </main>
   <noscript><p class="empty">Para veres as atividades, ativa o JavaScript no browser.</p></noscript>
 
   <footer>Página pessoal do professor Leonardo Freitas, com materiais de apoio às aulas. Não é um site oficial do Agrupamento.</footer>
@@ -146,17 +166,51 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
     seguranca: '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3l14 5v10c0 9-6 16-14 19C12 34 6 27 6 18V8z" fill="var(--accent)"/><path d="M13 20l5 5 9-10" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     blocos: '<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="9" y="25" width="22" height="11" rx="2" fill="var(--accent)"/><rect x="9" y="12" width="22" height="11" rx="2" fill="var(--robot)"/><rect x="12" y="8" width="5" height="4" rx="1" fill="var(--robot)"/><rect x="23" y="8" width="5" height="4" rx="1" fill="var(--robot)"/></svg>',
     carro: '<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="18" width="32" height="11" rx="4" fill="var(--accent)"/><path d="M10 18l4-7h12l4 7z" fill="var(--accent)"/><path d="M15 17l2.2-4h5.6l2.2 4z" fill="#fff" opacity=".85"/><circle cx="12" cy="30" r="4" fill="var(--ink)"/><circle cx="28" cy="30" r="4" fill="var(--ink)"/></svg>',
+    formulario: '<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="7" y="3" width="26" height="34" rx="4" fill="var(--accent)"/><rect x="14" y="1" width="12" height="6" rx="2" fill="var(--robot)"/><g fill="#fff"><rect x="12" y="13" width="4" height="4" rx="1"/><rect x="19" y="14" width="10" height="2" rx="1"/><rect x="12" y="21" width="4" height="4" rx="1"/><rect x="19" y="22" width="10" height="2" rx="1"/><rect x="12" y="29" width="4" height="4" rx="1"/><rect x="19" y="30" width="7" height="2" rx="1"/></g></svg>',
     estrela: '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3l5 11 12 1.3-9 8 2.6 11.7L20 29l-10.6 6 2.6-11.7-9-8L15 14z" fill="var(--sun)"/></svg>'
   };
-  var TILES = { robo: '--tile-a', conversa: '--tile-b', codigo: '--tile-b', microbit: '--tile-c', seguranca: '--tile-d', blocos: '--tile-a', carro: '--tile-b', estrela: '--tile-c' };
+  var TILES = { robo: '--tile-a', conversa: '--tile-b', codigo: '--tile-b', microbit: '--tile-c', seguranca: '--tile-d', blocos: '--tile-a', carro: '--tile-b', formulario: '--tile-d', estrela: '--tile-c' };
   var SEMANA = 7 * 24 * 3600 * 1000;
   var esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  // Agrupa por disciplina e devolve as secções já com os cartões
+  function secoes(lista, cartao, nomes) {
+    var grupos = {}, ordem = [];
+    lista.forEach(function (a) { var d = a.disciplina || 'Geral'; if (!grupos[d]) { grupos[d] = []; ordem.push(d); } grupos[d].push(a); });
+    return ordem.map(function (d) {
+      var n = grupos[d].length;
+      return '<section class="subject"><div class="subject-head"><h2>' + esc(d) + '</h2><span class="count">' + n + ' ' + (n === 1 ? nomes[0] : nomes[1]) + '</span></div><div class="list">' +
+        grupos[d].map(cartao).join('') + '</div></section>';
+    }).join('');
+  }
+
+  // Abas: Atividades / Formulários (o endereço #formularios abre logo a segunda)
+  var TABS = [['atividades', 'lista', 'Olá! Escolhe uma atividade para começar.'], ['formularios', 'formularios', 'Aqui estão os formulários que o professor pediu para preencher.']];
+  function abrir(qual, foco) {
+    TABS.forEach(function (t) {
+      var on = t[0] === qual, b = document.getElementById('tab-' + t[0]);
+      b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1;
+      document.getElementById(t[1]).hidden = !on;
+      if (on) { document.getElementById('hello').textContent = t[2]; if (foco) b.focus(); }
+    });
+    try { history.replaceState(null, '', qual === 'formularios' ? '#formularios' : location.pathname + location.search); } catch (e) {}
+  }
+  TABS.forEach(function (t, i) {
+    var b = document.getElementById('tab-' + t[0]);
+    b.onclick = function () { abrir(t[0]); };
+    b.onkeydown = function (e) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault(); abrir(TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length][0], true);
+    };
+  });
 
   function render() {
     var agora = new Date();
     var versao = Math.floor(agora / 60000); // evita que o browser abra uma versão antiga guardada em cache
     var todas = window.ATIVIDADES || [];
-    var visiveis = todas.filter(function (a) { return !a.pagina && window.atividadeDisponivel(a, agora); });
+    var disponiveis = todas.filter(function (a) { return !a.pagina && window.atividadeDisponivel(a, agora); });
+    var visiveis = disponiveis.filter(function (a) { return a.tipo !== 'formulario'; });
+    var forms = disponiveis.filter(function (a) { return a.tipo === 'formulario' && /^https:\/\//i.test(a.url || ''); });
     var grupos = {}, ordem = [];
     visiveis.forEach(function (a) { if (!grupos[a.disciplina]) { grupos[a.disciplina] = []; ordem.push(a.disciplina); } grupos[a.disciplina].push(a); });
     var html = ordem.map(function (d) {
@@ -171,6 +225,14 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
         }).join('') + '</div></section>';
     }).join('');
     document.getElementById('lista').innerHTML = html || '<p class="empty">Ainda não há atividades disponíveis. Volta mais tarde!</p>';
+    document.getElementById('formularios').innerHTML = secoes(forms, function (a) {
+      var nova = a.estado === 'agendada' && a.disponivelEm && (agora - new Date(a.disponivelEm)) < SEMANA;
+      return '<a class="card" href="' + esc(a.url) + '" target="_blank" rel="noopener"><span class="tile" style="background:var(' + TILES.formulario + ')">' + ICONS.formulario + '</span>' +
+        '<span class="body"><span class="meta"><span class="tag">' + esc(a.tema || 'Formulário') + '</span>' + (nova ? '<span class="new">Novo</span>' : '') + '</span>' +
+        '<h3>' + esc(a.titulo) + '</h3>' + (a.descricao ? '<p>' + esc(a.descricao) + '</p>' : '') + '<span class="go">Abrir formulário ↗</span></span></a>';
+    }, ['formulário', 'formulários']) || '<p class="empty">Ainda não há formulários para preencher. Quando o professor pedir, aparecem aqui.</p>';
+    document.getElementById('n-atividades').textContent = visiveis.length;
+    document.getElementById('n-formularios').textContent = forms.length;
 
     // Se houver uma atividade agendada para as próximas horas, a página atualiza-se sozinha quando ela abrir
     var proximas = todas.filter(function (a) { return a.estado === 'agendada' && a.disponivelEm && new Date(a.disponivelEm) > agora; })
@@ -178,6 +240,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
     if (proximas.length && proximas[0] < 12 * 3600 * 1000) setTimeout(render, proximas[0] + 1000);
   }
   render();
+  abrir(location.hash === '#formularios' ? 'formularios' : 'atividades');
 })();
 </script>
 </body>

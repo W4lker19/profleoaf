@@ -49,7 +49,7 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 1.2rem; margin: 0
 .box { background: var(--paper); border: 2px solid var(--line); border-radius: 18px; padding: 20px; display: grid; gap: 14px; }
 .field { display: grid; gap: 6px; }
 label { font-weight: 600; font-size: .92rem; }
-input[type=password], input[type=datetime-local] {
+input[type=password], input[type=datetime-local], input[type=text], input[type=url], textarea {
   font: 400 1rem var(--body); color: var(--ink); background: var(--bg); border: 2px solid var(--line);
   border-radius: 10px; padding: 10px 12px; width: 100%;
 }
@@ -86,6 +86,10 @@ details ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; }
 .seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
 .seg input:focus-visible + label { outline: 3px solid var(--robot); outline-offset: -3px; }
 .when { display: grid; gap: 6px; max-width: 280px; }
+.kind { font-size: .74rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
+.btn.danger { background: transparent; border-color: var(--line); color: var(--bad); padding: 6px 12px; font-size: .85rem; }
+textarea { resize: vertical; min-height: 70px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
 .savebar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 </style>
 </head>
@@ -94,7 +98,7 @@ details ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; }
   <header>
     <div>
       <h1>Gestão do Site</h1>
-      <p class="sub">Aulas do Prof. Leo · escolhe o que os alunos podem ver e quando.</p>
+      <p class="sub">Aulas do Prof. Leo · escolhe o que os alunos podem ver e quando, e acrescenta formulários.</p>
     </div>
     <button type="button" class="btn ghost" id="logout" hidden>Terminar sessão</button>
   </header>
@@ -152,7 +156,7 @@ details ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; }
 
   <!-- Painel -->
   <section class="box" id="panel" hidden>
-    <h2>Atividades</h2>
+    <h2>Atividades e formulários</h2>
     <div id="list"></div>
     <div class="msg" id="saveMsg" hidden></div>
     <div class="savebar">
@@ -160,6 +164,36 @@ details ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; }
       <button type="button" class="btn ghost" id="reload">Recarregar</button>
     </div>
     <p class="help">Depois de guardar, o site atualiza em um ou dois minutos. As atividades agendadas abrem sozinhas na data escolhida, sem precisares de voltar aqui.</p>
+  </section>
+
+  <section class="box" id="formBox" hidden>
+    <h2>Novo formulário</h2>
+    <p class="help">Cola o link de partilha de um Microsoft Forms ou Google Forms. Aparece na aba Formulários do site depois de carregares em Guardar alterações.</p>
+    <div class="field">
+      <label for="fTitulo">Título</label>
+      <input type="text" id="fTitulo" maxlength="80" placeholder="Ex.: Autoavaliação do 1.º período">
+    </div>
+    <div class="field">
+      <label for="fUrl">Link do formulário</label>
+      <input type="url" id="fUrl" spellcheck="false" placeholder="https://forms.office.com/…">
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label for="fDisc">Disciplina</label>
+        <input type="text" id="fDisc" list="discList" maxlength="60" placeholder="Ex.: TIC · 7.º ano">
+        <datalist id="discList"></datalist>
+      </div>
+      <div class="field">
+        <label for="fTema">Etiqueta (opcional)</label>
+        <input type="text" id="fTema" maxlength="40" placeholder="Ex.: Autoavaliação">
+      </div>
+    </div>
+    <div class="field">
+      <label for="fDesc">Descrição (opcional)</label>
+      <textarea id="fDesc" maxlength="240" placeholder="Uma frase a dizer aos alunos o que é e quanto tempo demora."></textarea>
+    </div>
+    <div class="row"><button type="button" class="btn ghost" id="addForm">Acrescentar à lista</button></div>
+    <div class="msg" id="formMsg" hidden></div>
   </section>
 
   <section class="box" id="security" hidden>
@@ -186,13 +220,13 @@ const ITER = 600000;
 const $ = id => document.getElementById(id);
 const ESTADOS = [['visivel', 'Visível'], ['oculta', 'Oculta'], ['agendada', 'Agendada']];
 
-let token = '', cfg = null, cfgSha = null, actSha = '', actText = '', items = [], original = '';
+let token = '', cfg = null, cfgSha = null, actSha = '', actText = '', items = [], original = '', origItems = [];
 
 /* ---------- utilitários ---------- */
 function msg(id, kind, text) { const m = $(id); m.hidden = !text; m.className = 'msg ' + (kind || ''); m.textContent = text || ''; }
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-function view(name) { ['loginBox', 'setupBox', 'panel', 'security'].forEach(id => $(id).hidden = true); $('logout').hidden = name !== 'panel';
-  if (name === 'panel') { $('panel').hidden = false; $('security').hidden = false; } else $(name).hidden = false; }
+function view(name) { ['loginBox', 'setupBox', 'panel', 'formBox', 'security'].forEach(id => $(id).hidden = true); $('logout').hidden = name !== 'panel';
+  if (name === 'panel') { $('panel').hidden = false; $('formBox').hidden = false; $('security').hidden = false; } else $(name).hidden = false; }
 const toB64 = bytes => { let s = ''; new Uint8Array(bytes).forEach(b => s += String.fromCharCode(b)); return btoa(s); };
 const fromB64 = s => Uint8Array.from(atob(s.replace(/\s/g, '')), c => c.charCodeAt(0));
 const textToB64 = t => toB64(new TextEncoder().encode(t));
@@ -242,7 +276,21 @@ async function putFile(f, text, sha, message) {
 }
 
 /* ---------- atividades ---------- */
-const snapshot = () => JSON.stringify(items.map(a => [a.estado, a.disponivelEm || null]));
+const snapshot = () => JSON.stringify(items);
+const isForm = a => a.tipo === 'formulario';
+const keyOf = a => isForm(a) ? 'url:' + a.url : 'f:' + a.ficheiro;
+const origOf = a => origItems.find(o => keyOf(o) === keyOf(a));
+const estadoTxt = a => { const o = isForm(a) ? 'o' : 'a'; return a.estado === 'agendada' ? 'agendad' + o + ' para ' + fmtShort(a.disponivelEm) : a.estado === 'visivel' ? 'visível' : 'ocult' + o; };
+function changeList() {
+  const out = [];
+  items.forEach(a => {
+    const o = origOf(a), nome = (isForm(a) ? 'formulário ' : '') + a.titulo;
+    if (!o) out.push('novo ' + nome + ' (' + estadoTxt(a) + ')');
+    else if (o.estado !== a.estado || (o.disponivelEm || null) !== (a.disponivelEm || null)) out.push(nome + ' ' + estadoTxt(a));
+  });
+  origItems.forEach(o => { if (!items.some(a => keyOf(a) === keyOf(o))) out.push('removido ' + (isForm(o) ? 'formulário ' : '') + o.titulo); });
+  return out;
+}
 async function loadActivities() {
   const f = await getFile(ACT_FILE, true);
   if (!f) throw new Error('Não encontrei o atividades.js no repositório. Volta a carregar os ficheiros do zip.');
@@ -253,7 +301,8 @@ async function loadActivities() {
     if (!x.estado) x.estado = x.visivel ? 'visivel' : 'oculta';
     delete x.visivel; if (x.disponivelEm === undefined) x.disponivelEm = null; return x;
   });
-  original = snapshot();
+  original = snapshot(); origItems = JSON.parse(original);
+  $('discList').innerHTML = [...new Set(items.map(x => x.disciplina).filter(Boolean))].map(d => `<option value="${esc(d)}">`).join('');
 }
 function statusOf(a) {
   const now = new Date();
@@ -265,14 +314,14 @@ function statusOf(a) {
   return ['off', 'Oculta'];
 }
 function render() {
-  const orig = JSON.parse(original);
   $('list').innerHTML = items.map((a, i) => {
     const [cls, txt] = statusOf(a);
-    const changed = JSON.stringify([a.estado, a.disponivelEm || null]) !== JSON.stringify(orig[i]);
+    const o = origOf(a);
+    const changed = !o || o.estado !== a.estado || (o.disponivelEm || null) !== (a.disponivelEm || null);
     return `<div class="item">
       <div class="item-head">
         <div style="min-width:0">
-          <div class="meta">${a.pagina ? `<span>Página: ${esc(a.pagina)}</span>` : ''}<span>${esc(a.disciplina)}</span><span>${esc(a.tema)}</span></div>
+          <div class="meta">${isForm(a) ? '<span class="kind">Formulário</span>' : ''}${a.pagina ? `<span>Página: ${esc(a.pagina)}</span>` : ''}<span>${esc(a.disciplina)}</span>${a.tema ? `<span>${esc(a.tema)}</span>` : ''}</div>
           <h3>${esc(a.titulo)}</h3>
         </div>
         <span class="status ${cls}">${esc(txt)}</span>
@@ -281,7 +330,7 @@ function render() {
         <div class="seg" role="radiogroup" aria-label="Estado de ${esc(a.titulo)}">
           ${ESTADOS.map(([v, l]) => `<input type="radio" name="e${i}" id="e${i}${v}" value="${v}" data-i="${i}" ${a.estado === v ? 'checked' : ''}><label for="e${i}${v}">${l}</label>`).join('')}
         </div>
-        <div class="meta"><a href="${esc(a.ficheiro)}#preview" target="_blank" rel="noopener">Pré-visualizar</a>${changed ? '<span class="changed">Por guardar</span>' : ''}</div>
+        <div class="meta"><a href="${esc(isForm(a) ? a.url : a.ficheiro + '#preview')}" target="_blank" rel="noopener">${isForm(a) ? 'Abrir formulário' : 'Pré-visualizar'}</a>${changed ? `<span class="changed">${o ? 'Por guardar' : 'Novo, por guardar'}</span>` : ''}${isForm(a) ? `<button type="button" class="btn danger" data-del="${i}">Remover</button>` : ''}</div>
       </div>
       ${a.estado === 'agendada' ? `<div class="when"><label for="d${i}">Fica disponível a</label><input type="datetime-local" id="d${i}" data-i="${i}" value="${toLocalInput(a.disponivelEm)}"></div>` : ''}
     </div>`;
@@ -294,21 +343,37 @@ function render() {
   $('list').querySelectorAll('input[type=datetime-local]').forEach(d => d.onchange = () => {
     msg('saveMsg', '', ''); items[+d.dataset.i].disponivelEm = d.value ? new Date(d.value).toISOString() : null; render(); $('d' + d.dataset.i).focus();
   });
+  $('list').querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    const a = items[+b.dataset.del];
+    if (!confirm('Remover o formulário "' + a.titulo + '" do site? O formulário em si não é apagado, só deixa de aparecer aqui.')) return;
+    items.splice(+b.dataset.del, 1); msg('saveMsg', '', ''); render();
+  });
+  const removidos = origItems.filter(o => !items.some(a => keyOf(a) === keyOf(o))).length;
+  if (removidos) $('list').insertAdjacentHTML('beforeend', `<p class="changed" style="margin:0">${removidos === 1 ? '1 formulário removido' : removidos + ' formulários removidos'}, por guardar.</p>`);
   $('save').disabled = snapshot() === original;
+}
+function addForm() {
+  const titulo = $('fTitulo').value.trim(), url = $('fUrl').value.trim(), disc = $('fDisc').value.trim(), tema = $('fTema').value.trim(), desc = $('fDesc').value.trim();
+  if (!titulo) return msg('formMsg', 'bad', 'Escreve o título do formulário.');
+  let u; try { u = new URL(url); } catch (e) { u = null; }
+  if (!u || u.protocol !== 'https:') return msg('formMsg', 'bad', 'O link tem de ser um endereço completo que comece por https://.');
+  if (!disc) return msg('formMsg', 'bad', 'Escolhe a disciplina (aparece como título da secção no site).');
+  if (items.some(a => isForm(a) && a.url === u.href)) return msg('formMsg', 'bad', 'Esse link já está na lista.');
+  items.push({ tipo: 'formulario', url: u.href, disciplina: disc, tema: tema || 'Formulário', titulo, descricao: desc, estado: 'visivel', disponivelEm: null });
+  ['fTitulo', 'fUrl', 'fTema', 'fDesc'].forEach(id => $(id).value = '');
+  render(); msg('formMsg', 'ok', '"' + titulo + '" foi acrescentado à lista como Visível. Muda o estado se quiseres e carrega em Guardar alterações.');
 }
 async function save() {
   const falta = items.find(a => a.estado === 'agendada' && !a.disponivelEm);
   if (falta) { msg('saveMsg', 'bad', 'Escolhe a data e a hora de "' + falta.titulo + '" antes de guardar.'); return; }
-  const orig = JSON.parse(original);
-  const changes = items.filter((a, i) => JSON.stringify([a.estado, a.disponivelEm || null]) !== JSON.stringify(orig[i]))
-    .map(a => a.titulo + ' ' + (a.estado === 'agendada' ? 'agendada para ' + fmtShort(a.disponivelEm) : a.estado === 'visivel' ? 'visível' : 'oculta'));
+  const changes = changeList();
   $('save').disabled = true; msg('saveMsg', '', 'A guardar…');
   const a = actText.indexOf(START), b = actText.indexOf(END);
   const novo = actText.slice(0, a + START.length) + JSON.stringify(items, null, 2) + actText.slice(b);
   try {
     actSha = await putFile(ACT_FILE, novo, actSha, 'Atividades: ' + changes.join('; '));
-    actText = novo; original = snapshot(); render();
-    msg('saveMsg', 'ok', 'Guardado: ' + changes.join('; ') + '. O site atualiza em um ou dois minutos.');
+    actText = novo; original = snapshot(); origItems = JSON.parse(original); render();
+    msg('saveMsg', 'ok', 'Guardado: ' + changes.join('; ') + '. O site atualiza em um ou dois minutos.'); msg('formMsg', '', '');
   } catch (e) { msg('saveMsg', 'bad', e.message); $('save').disabled = false; }
 }
 
@@ -383,6 +448,7 @@ $('forgot').onclick = () => setupMode(true);
 $('setupCancel').onclick = () => { view('loginBox'); msg('setupMsg', '', ''); };
 $('setup').onclick = doSetup;
 $('save').onclick = save;
+$('addForm').onclick = addForm;
 $('reload').onclick = async () => { msg('saveMsg', '', 'A recarregar…'); try { await loadActivities(); render(); msg('saveMsg', '', ''); } catch (e) { msg('saveMsg', 'bad', e.message); } };
 $('change').onclick = doChange;
 $('logout').onclick = () => { sessSet(''); token = ''; items = []; view(cfg ? 'loginBox' : 'setupBox'); msg('topMsg', 'ok', 'Sessão terminada.'); };

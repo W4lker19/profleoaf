@@ -5,6 +5,7 @@
 //   "estado": "agendada" -> aparece a partir de "disponivelEm" (data e hora em formato ISO)
 //   "icone": "robo", "conversa", "codigo", "microbit", "seguranca", "blocos", "carro" ou "estrela"
 //   "pagina": "pedro" -> a atividade aparece só em profleoaf.pt/pedro (e não na página principal)
+//   "tipo": "formulario" + "url": "https://..." -> aparece na aba Formulários e abre o link (sem "ficheiro")
 // Mantém o formato JSON (aspas duplas) entre as marcas ATIVIDADES-INICIO e ATIVIDADES-FIM.
 // Para ver uma atividade que ainda não está disponível, abre o endereço dela com #preview no fim.
 
@@ -77,6 +78,6 @@ window.atividadeDisponivel = function (a, agora) {
   var nome = decodeURIComponent(location.pathname.split('/').pop() || 'index.html').replace(/\.html$/i, '');
   var base = function (f) { return f.split('/').pop().replace(/\.html$/i, ''); };
   if (nome === 'index' || nome === 'admin' || nome === '') return;
-  var a = window.ATIVIDADES.find(function (x) { return base(x.ficheiro) === nome; });
+  var a = window.ATIVIDADES.find(function (x) { return x.ficheiro && base(x.ficheiro) === nome; });
   if (a && !window.atividadeDisponivel(a) && location.hash !== '#preview') location.replace(a.pagina ? '/' + a.pagina + '/' : '/');
 })();
