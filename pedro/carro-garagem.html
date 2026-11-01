@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leva o carro à garagem · Pedro</title>
+<script>document.write('<script src="/atividades.js?v=' + Math.floor(Date.now() / 60000) + '"><\/script>');</script>
+<style>
+  :root {
+    --bg: #f4f7fb; --paper: #ffffff; --ink: #1b2a39; --muted: #586a7c; --line: #d3dfeb; --accent: #2a5d8f; --ok: #1f8a4c;
+    --relva: #cfe9c4; --relva2: #c3e2b6; --estrada: #e9eef3;
+    --vermelho: #d7392b; --azul: #2b6fd7; --amarelo: #f5c518; --verde: #2ea043;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font-family: Arial, Helvetica, sans-serif; display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; touch-action: manipulation; overflow: hidden; }
+
+  /* barra da professora */
+  .barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; font-size: 14px; color: var(--muted); }
+  .contagem { margin-right: auto; font-size: 15px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; }
+  .contagem b { color: var(--ink); }
+  .grupo { display: flex; gap: 4px; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .grupo span { padding: 0 6px; }
+  .barra button, .barra a { font: inherit; border: 0; background: transparent; color: var(--muted); padding: 6px 10px; border-radius: 7px; cursor: pointer; text-decoration: none; }
+  .barra button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  button:focus-visible { outline: 4px solid var(--accent); outline-offset: 3px; }
+
+  /* área de jogo */
+  .jogo { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: clamp(16px, 4vw, 56px); padding: 6px 16px 16px; }
+  .tabuleiro { position: relative; width: var(--tam); height: var(--tam); display: grid; gap: 4px; padding: 6px; background: #9fc79a; border-radius: 18px; border: 5px solid var(--ink); flex: none; }
+  .casa { background: var(--relva); border-radius: 8px; position: relative; display: flex; align-items: center; justify-content: center; }
+  .casa:nth-child(odd) { background: var(--relva2); }
+  .casa svg { width: 84%; height: 84%; }
+  .casa.rasto::after { content: ""; position: absolute; width: 22%; height: 22%; border-radius: 50%; background: rgba(27,42,57,.18); }
+  .carro { position: absolute; left: 6px; top: 6px; width: var(--casa); height: var(--casa); transition: transform .38s ease-in-out; pointer-events: none; z-index: 2; display: flex; align-items: center; justify-content: center; }
+  .carro svg { width: 82%; height: 82%; transition: transform .25s; }
+  .carro.bate svg { animation: bate .35s; }
+  @keyframes bate { 30% { transform: var(--rot) translateY(-12%); } 60% { transform: var(--rot) translateY(6%); } }
+  .carro.chegou svg { animation: salta .45s ease-in-out 2; }
+  @keyframes salta { 50% { transform: var(--rot) scale(1.18); } }
+
+  /* comandos */
+  .comandos { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .missao { display: flex; align-items: center; gap: 12px; font-size: clamp(18px, 2.4vw, 26px); font-weight: 700; background: var(--paper); border: 3px solid var(--line); border-radius: 18px; padding: 8px 18px; }
+  .missao svg { width: 54px; height: 54px; }
+  .setas { display: grid; grid-template-columns: repeat(3, var(--bt)); grid-template-rows: repeat(3, var(--bt)); gap: 10px; }
+  .seta { width: var(--bt); height: var(--bt); border-radius: 22px; border: 6px solid var(--ink); background: #fff1c2; cursor: pointer; box-shadow: 0 7px 0 rgba(27,42,57,.25); display: flex; align-items: center; justify-content: center; padding: 0; }
+  .seta svg { width: 62%; height: 62%; }
+  .seta:active { transform: translateY(4px); box-shadow: 0 3px 0 rgba(27,42,57,.25); }
+  .seta[data-d="0"] { grid-area: 1 / 2; } .seta[data-d="3"] { grid-area: 2 / 1; } .seta[data-d="1"] { grid-area: 2 / 3; } .seta[data-d="2"] { grid-area: 3 / 2; }
+  .centro { grid-area: 2 / 2; border-radius: 50%; background: #dfe8f2; border: 4px dashed #b8c6d6; margin: 14%; }
+
+  .programa { display: none; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; min-height: calc(var(--bt) * .62 + 12px); max-width: calc(var(--bt) * 3 + 20px + 120px); background: var(--paper); border: 3px dashed #9fb1c4; border-radius: 16px; padding: 6px; }
+  .programa i { width: calc(var(--bt) * .52); height: calc(var(--bt) * .52); border-radius: 10px; border: 3px solid var(--ink); background: #fff1c2; display: flex; align-items: center; justify-content: center; }
+  .programa i svg { width: 70%; height: 70%; }
+  .programa i.agora { background: #9be0b4; transform: scale(1.12); }
+  .programa i.erro { background: #f3b2a9; }
+  .programa .vazio { color: #9fb1c4; font-size: 18px; font-weight: 700; padding: 0 10px; }
+  .botoes-prog { display: none; gap: 12px; }
+  .andar, .apagar { font: 700 clamp(20px, 2.6vw, 30px) Arial, sans-serif; border: 6px solid var(--ink); border-radius: 20px; padding: 10px 26px; cursor: pointer; box-shadow: 0 7px 0 rgba(27,42,57,.25); display: flex; align-items: center; gap: 10px; }
+  .andar { background: #9be0b4; } .apagar { background: #fff; font-size: clamp(16px, 2vw, 22px); padding: 10px 16px; }
+  .andar:disabled, .seta:disabled, .apagar:disabled { opacity: .45; }
+  body[data-modo="programar"] .programa, body[data-modo="programar"] .botoes-prog { display: flex; }
+
+  .festa { position: fixed; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: 5; }
+  .festa b { font-size: clamp(44px, 9vw, 110px); color: var(--ok); background: rgba(255,255,255,.93); border: 6px solid var(--ok); border-radius: 30px; padding: 10px 40px; opacity: 0; transform: scale(.6); transition: .25s; }
+  .festa.on b { opacity: 1; transform: scale(1); }
+  .estrela { position: absolute; font-size: 48px; animation: voa 1.1s ease-out forwards; }
+  @keyframes voa { from { transform: translate(0,0) scale(.4); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(1.2); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .carro, .carro svg { transition: none; } .carro.bate svg, .carro.chegou svg, .estrela { animation: none; } }
+</style>
+</head>
+<body data-modo="conduzir">
+  <div class="barra" aria-label="Opções para a professora">
+    <div class="contagem" id="contagem" aria-live="polite"></div>
+    <div class="grupo"><span>Modo</span><button data-modo="conduzir" aria-pressed="true">Conduzir</button><button data-modo="programar" aria-pressed="false">Programar</button></div>
+    <div class="grupo"><span>Nível</span><button data-nivel="1" aria-pressed="true">1</button><button data-nivel="2" aria-pressed="false">2</button><button data-nivel="3" aria-pressed="false">3</button><button data-nivel="4" aria-pressed="false">4</button></div>
+    <div class="grupo"><button id="b-som" aria-pressed="true">Som</button><button id="b-novo">Outro caminho</button><a href="/pedro/">← Início</a></div>
+  </div>
+
+  <main class="jogo">
+    <div class="tabuleiro" id="tab" aria-label="Tabuleiro"></div>
+    <div class="comandos">
+      <div class="missao" id="missao"></div>
+      <div class="programa" id="programa" aria-live="polite"></div>
+      <div class="setas" id="setas">
+        <button class="seta" data-d="0" aria-label="Cima"></button>
+        <button class="seta" data-d="3" aria-label="Esquerda"></button>
+        <div class="centro" aria-hidden="true"></div>
+        <button class="seta" data-d="1" aria-label="Direita"></button>
+        <button class="seta" data-d="2" aria-label="Baixo"></button>
+      </div>
+      <div class="botoes-prog"><button class="apagar" id="b-apagar">Apagar</button><button class="andar" id="b-andar">▶ Andar</button></div>
+    </div>
+  </main>
+  <div class="festa" id="festa"><b>Muito bem!</b></div>
+
+<script>
+const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
+const CORES = ['vermelho', 'azul', 'amarelo', 'verde'];
+const COR = { vermelho: '#d7392b', azul: '#2b6fd7', amarelo: '#f5c518', verde: '#2ea043' };
+// Níveis: tamanho, distância mínima, cones, curva obrigatória, garagens
+const NIVEIS = {
+  1: { n: 4, min: 2, max: 3, cones: 0, curva: false, garagens: 1 },
+  2: { n: 4, min: 3, max: 5, cones: 0, curva: true, garagens: 1 },
+  3: { n: 5, min: 4, max: 7, cones: 4, curva: true, garagens: 1, desvio: true },
+  4: { n: 5, min: 4, max: 7, cones: 3, curva: true, garagens: 2 },
+};
+const st = { modo: 'conduzir', nivel: 1, som: true, mapa: null, carro: null, prog: [], ocupado: false, errou: false,
+  stats: { conduzir: [0, 0], programar: [0, 0] } };
+const $ = id => document.getElementById(id);
+const rnd = n => Math.floor(Math.random() * n);
+
+const setaSVG = d => `<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(${d * 90} 50 50)"><path d="M50 8 L88 50 H64 V92 H36 V50 H12 Z" fill="#1b2a39"/></g></svg>`;
+const carroSVG = c => `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <rect x="14" y="20" width="12" height="20" rx="4" fill="#1b2a39"/><rect x="74" y="20" width="12" height="20" rx="4" fill="#1b2a39"/>
+  <rect x="14" y="62" width="12" height="20" rx="4" fill="#1b2a39"/><rect x="74" y="62" width="12" height="20" rx="4" fill="#1b2a39"/>
+  <rect x="22" y="8" width="56" height="86" rx="18" fill="${COR[c]}" stroke="#1b2a39" stroke-width="5"/>
+  <path d="M30 34 q20 -10 40 0 l-4 14 h-32 z" fill="#cfe8f7" stroke="#1b2a39" stroke-width="3.5"/>
+  <rect x="32" y="62" width="36" height="14" rx="5" fill="#cfe8f7" stroke="#1b2a39" stroke-width="3.5"/>
+  <circle cx="33" cy="15" r="4.5" fill="#ffe58a" stroke="#1b2a39" stroke-width="2"/><circle cx="67" cy="15" r="4.5" fill="#ffe58a" stroke="#1b2a39" stroke-width="2"/></svg>`;
+const garagemSVG = c => `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M8 44 L50 10 L92 44 V92 H8 Z" fill="${COR[c]}" stroke="#1b2a39" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="24" y="50" width="52" height="42" fill="#fff" stroke="#1b2a39" stroke-width="4"/><path d="M24 61 H76 M24 72 H76 M24 83 H76" stroke="#9fb1c4" stroke-width="3"/></svg>`;
+const coneSVG = `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="16" y="78" width="68" height="12" rx="4" fill="#e8692c" stroke="#1b2a39" stroke-width="4"/>
+  <path d="M36 78 L46 14 h8 L64 78 z" fill="#e8692c" stroke="#1b2a39" stroke-width="4" stroke-linejoin="round"/><path d="M41 52 h18 l2 10 h-22 z M44 33 h12 l1.5 8 h-15 z" fill="#fff"/></svg>`;
+
+function falar(t) {
+  if (!st.som || !('speechSynthesis' in window)) return;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'pt-PT'; u.rate = .9;
+    const vs = speechSynthesis.getVoices(); const v = vs.find(v => v.lang === 'pt-PT') || vs.find(v => v.lang && v.lang.startsWith('pt')); if (v) u.voice = v; speechSynthesis.speak(u); } catch (e) {}
+}
+let ac = null;
+function buzina() {
+  if (!st.som) return;
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    [0, .22].forEach(t0 => { const o = ac.createOscillator(), g = ac.createGain(); o.type = 'square'; o.frequency.value = 440;
+      g.gain.setValueAtTime(0, ac.currentTime + t0); g.gain.linearRampToValueAtTime(.12, ac.currentTime + t0 + .02); g.gain.linearRampToValueAtTime(0, ac.currentTime + t0 + .16);
+      o.connect(g); g.connect(ac.destination); o.start(ac.currentTime + t0); o.stop(ac.currentTime + t0 + .18); });
+  } catch (e) {}
+}
+
+// caminho mais curto (só setas: cima, baixo, esquerda, direita)
+function bfs(m, from) {
+  const dist = {}; const q = [from]; dist[from] = 0;
+  while (q.length) { const k = q.shift(); const [x, y] = k.split(',').map(Number);
+    for (let d = 0; d < 4; d++) { const nx = x + DX[d], ny = y + DY[d], nk = nx + ',' + ny;
+      if (nx < 0 || ny < 0 || nx >= m.n || ny >= m.n || m.cones.has(nk) || nk in dist) continue;
+      if (m.outra && nk === m.outra) continue;
+      dist[nk] = dist[k] + 1; q.push(nk); } }
+  return dist;
+}
+function gerar() {
+  const L = NIVEIS[st.nivel];
+  for (let t = 0; t < 2000; t++) {
+    const n = L.n, cor = CORES[rnd(4)];
+    const m = { n, cor, cones: new Set(), outra: null, outraCor: null };
+    const ini = [rnd(n), rnd(n)], gar = [rnd(n), rnd(n)];
+    const k = p => p[0] + ',' + p[1];
+    if (k(ini) === k(gar)) continue;
+    const man = Math.abs(ini[0] - gar[0]) + Math.abs(ini[1] - gar[1]);
+    if (L.curva ? (ini[0] === gar[0] || ini[1] === gar[1]) : (ini[0] !== gar[0] && ini[1] !== gar[1])) continue;
+    while (m.cones.size < L.cones) { const c = [rnd(n), rnd(n)]; if (k(c) !== k(ini) && k(c) !== k(gar)) m.cones.add(k(c)); }
+    if (L.garagens === 2) { let o; let tries = 0; do { o = [rnd(n), rnd(n)]; tries++; } while ((k(o) === k(ini) || k(o) === k(gar) || m.cones.has(k(o))) && tries < 50);
+      m.outra = k(o); m.outraCor = CORES.filter(c => c !== cor)[rnd(3)]; }
+    const dist = bfs(m, k(ini))[k(gar)];
+    if (dist === undefined || dist < L.min || dist > L.max) continue;
+    if (L.desvio && dist === man) continue;           // os cones têm de obrigar a dar a volta
+    if (L.garagens === 2) { const dO = Math.abs(ini[0] - +m.outra.split(',')[0]) + Math.abs(ini[1] - +m.outra.split(',')[1]); if (dO > dist + 1) continue; } // a garagem errada também fica perto
+    m.ini = ini; m.gar = gar; m.min = dist; return m;
+  }
+  return null;
+}
+
+function tamanhos() {
+  const w = window.innerWidth, h = window.innerHeight - 70;
+  const prog = st.modo === 'programar';
+  let bt = Math.max(64, Math.min(120, (h - (prog ? 230 : 120)) / 3.3));
+  let tam = Math.min(h - 20, w - (bt * 3 + 60) - 70);
+  if (tam < 260) { tam = 260; bt = Math.max(56, (w - tam - 100) / 3.3); }
+  const r = document.documentElement.style;
+  r.setProperty('--tam', tam + 'px'); r.setProperty('--bt', bt + 'px');
+  r.setProperty('--casa', ((tam - 22 - 4 * (st.mapa ? st.mapa.n - 1 : 3)) / (st.mapa ? st.mapa.n : 4)) + 'px');
+  if (st.carro) desenharCarro(true);
+}
+
+function desenhar() {
+  const m = st.mapa, t = $('tab');
+  t.style.gridTemplateColumns = `repeat(${m.n}, 1fr)`; t.style.gridTemplateRows = `repeat(${m.n}, 1fr)`;
+  t.innerHTML = '';
+  for (let y = 0; y < m.n; y++) for (let x = 0; x < m.n; x++) {
+    const c = document.createElement('div'); c.className = 'casa'; c.dataset.k = x + ',' + y;
+    if (x === m.gar[0] && y === m.gar[1]) c.innerHTML = garagemSVG(m.cor);
+    else if (m.outra === x + ',' + y) c.innerHTML = garagemSVG(m.outraCor);
+    else if (m.cones.has(x + ',' + y)) c.innerHTML = coneSVG;
+    t.appendChild(c);
+  }
+  const car = document.createElement('div'); car.className = 'carro'; car.id = 'carro'; car.innerHTML = carroSVG(m.cor); t.appendChild(car);
+  $('missao').innerHTML = `${carroSVG(m.cor)}<span>→</span>${garagemSVG(m.cor)}`;
+  tamanhos();
+}
+function desenharCarro(instant) {
+  const car = $('carro'); if (!car) return;
+  const casa = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--casa'));
+  if (instant) car.style.transition = 'none';
+  car.style.transform = `translate(${st.carro.x * (casa + 4)}px, ${st.carro.y * (casa + 4)}px)`;
+  const rot = `rotate(${st.carro.d * 90}deg)`; car.style.setProperty('--rot', rot); car.firstElementChild.style.transform = rot;
+  if (instant) { void car.offsetWidth; car.style.transition = ''; }
+}
+
+function contagem() { const s = st.stats[st.modo]; $('contagem').innerHTML = `${st.modo === 'conduzir' ? 'Conduzir' : 'Programar'} · nível ${st.nivel}: <b>${s[0]}</b> feitas · <b>${s[1]}</b> à primeira`; }
+
+function novo() {
+  st.mapa = gerar(); st.carro = { x: st.mapa.ini[0], y: st.mapa.ini[1], d: 0 }; st.prog = []; st.ocupado = false; st.errou = false;
+  // o carro começa virado para a garagem quando dá
+  const g = st.mapa.gar; st.carro.d = g[1] < st.carro.y ? 0 : g[0] > st.carro.x ? 1 : g[1] > st.carro.y ? 2 : 3;
+  desenhar(); desenharPrograma(); contagem(); bloquear(false);
+}
+function bloquear(b) { document.querySelectorAll('.seta, #b-andar, #b-apagar').forEach(x => x.disabled = b); if (!b && st.modo === 'programar') $('b-andar').disabled = !st.prog.length; }
+
+function desenharPrograma(ativo, erro) {
+  const p = $('programa');
+  if (!st.prog.length) { p.innerHTML = '<span class="vazio">Escolhe as setas</span>'; return; }
+  p.innerHTML = st.prog.map((d, i) => `<i class="${i === ativo ? (erro ? 'erro' : 'agora') : ''}">${setaSVG(d)}</i>`).join('');
+}
+
+// tenta mover; devolve 'ok', 'bate', 'chegou' ou 'errada'
+function mover(d) {
+  const m = st.mapa, c = st.carro; c.d = d;
+  const nx = c.x + DX[d], ny = c.y + DY[d], k = nx + ',' + ny;
+  if (nx < 0 || ny < 0 || nx >= m.n || ny >= m.n || m.cones.has(k)) { desenharCarro(); return 'bate'; }
+  const casaAnt = document.querySelector(`.casa[data-k="${c.x},${c.y}"]`); if (casaAnt && !casaAnt.innerHTML) casaAnt.classList.add('rasto');
+  c.x = nx; c.y = ny; desenharCarro();
+  if (nx === m.gar[0] && ny === m.gar[1]) return 'chegou';
+  if (m.outra === k) return 'errada';
+  return 'ok';
+}
+function bate() { st.errou = true; const car = $('carro'); car.classList.remove('bate'); void car.offsetWidth; car.classList.add('bate'); }
+
+function chegou() {
+  st.ocupado = true; bloquear(true);
+  const s = st.stats[st.modo]; s[0]++; if (!st.errou) s[1]++; contagem();
+  setTimeout(() => { $('carro').classList.add('chegou'); buzina(); }, 380);
+  setTimeout(() => {
+    const f = $('festa'); f.classList.add('on'); falar('Muito bem!');
+    for (let i = 0; i < 14; i++) { const e = document.createElement('span'); e.className = 'estrela'; e.textContent = '★'; e.style.color = ['#f5c518', '#2ea043', '#2b6fd7', '#d7392b'][i % 4];
+      e.style.setProperty('--dx', (Math.cos(i / 14 * 6.28) * 260) + 'px'); e.style.setProperty('--dy', (Math.sin(i / 14 * 6.28) * 200) + 'px'); f.appendChild(e); setTimeout(() => e.remove(), 1200); }
+    setTimeout(() => { f.classList.remove('on'); novo(); }, 1700);
+  }, 1100);
+}
+
+function voltarPartida() {
+  const m = st.mapa; st.carro = { x: m.ini[0], y: m.ini[1], d: st.carro.d };
+  document.querySelectorAll('.casa.rasto').forEach(c => c.classList.remove('rasto')); desenharCarro();
+}
+
+async function andar() {
+  if (st.ocupado || !st.prog.length) return;
+  st.ocupado = true; bloquear(true); voltarPartida();
+  await new Promise(r => setTimeout(r, 300));
+  for (let i = 0; i < st.prog.length; i++) {
+    desenharPrograma(i);
+    const r = mover(st.prog[i]);
+    await new Promise(r => setTimeout(r, 520));
+    if (r === 'chegou') { st.ocupado = false; desenharPrograma(i); return chegou(); }
+    if (r === 'bate' || r === 'errada') { desenharPrograma(i, true); if (r === 'bate') bate(); else st.errou = true; break; }
+  }
+  // não chegou: volta à partida, o programa fica para corrigir
+  st.errou = true;
+  if (!(st.carro.x === st.mapa.gar[0] && st.carro.y === st.mapa.gar[1])) falar('Quase! Vamos corrigir.');
+  await new Promise(r => setTimeout(r, 900));
+  voltarPartida(); st.ocupado = false; bloquear(false); desenharPrograma();
+}
+
+document.querySelectorAll('.seta').forEach(b => { b.innerHTML = setaSVG(+b.dataset.d); b.addEventListener('click', () => {
+  if (st.ocupado) return; const d = +b.dataset.d;
+  if (st.modo === 'conduzir') {
+    const r = mover(d);
+    if (r === 'bate') bate();
+    else if (r === 'chegou') chegou();
+    else if (r === 'errada') { st.errou = true; falar('Esta garagem não é desta cor.'); }
+  } else {
+    if (st.prog.length >= 12) return; st.prog.push(d); desenharPrograma(); bloquear(false);
+  }
+}); });
+$('b-andar').addEventListener('click', andar);
+$('b-apagar').addEventListener('click', () => { if (st.ocupado) return; st.prog.pop(); desenharPrograma(); bloquear(false); });
+function marcar(attr, val) { document.querySelectorAll(`button[data-${attr}]`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset[attr] == val))); }
+document.querySelectorAll('button[data-modo]').forEach(b => b.addEventListener('click', () => { st.modo = b.dataset.modo; document.body.dataset.modo = st.modo; marcar('modo', st.modo); novo(); }));
+document.querySelectorAll('button[data-nivel]').forEach(b => b.addEventListener('click', () => { st.nivel = +b.dataset.nivel; marcar('nivel', st.nivel); novo(); }));
+$('b-som').addEventListener('click', () => { st.som = !st.som; $('b-som').setAttribute('aria-pressed', String(st.som)); });
+$('b-novo').addEventListener('click', novo);
+document.addEventListener('keydown', e => {
+  const map = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 };
+  if (e.key in map) { e.preventDefault(); document.querySelector(`.seta[data-d="${map[e.key]}"]`).click(); }
+  else if (e.key === 'Enter' && st.modo === 'programar') { e.preventDefault(); andar(); }
+  else if (e.key === 'Backspace' && st.modo === 'programar') { e.preventDefault(); $('b-apagar').click(); }
+});
+window.addEventListener('resize', tamanhos);
+if ('speechSynthesis' in window) speechSynthesis.getVoices();
+novo();
+</script>
+</body>
+</html>

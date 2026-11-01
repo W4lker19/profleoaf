@@ -3,7 +3,7 @@
 //   "estado": "visivel"  -> aparece já
 //   "estado": "oculta"   -> não aparece
 //   "estado": "agendada" -> aparece a partir de "disponivelEm" (data e hora em formato ISO)
-//   "icone": "robo", "conversa", "codigo", "microbit", "seguranca", "blocos" ou "estrela"
+//   "icone": "robo", "conversa", "codigo", "microbit", "seguranca", "blocos", "carro" ou "estrela"
 //   "pagina": "pedro" -> a atividade aparece só em profleoaf.pt/pedro (e não na página principal)
 // Mantém o formato JSON (aspas duplas) entre as marcas ATIVIDADES-INICIO e ATIVIDADES-FIM.
 // Para ver uma atividade que ainda não está disponível, abre o endereço dela com #preview no fim.
@@ -27,7 +27,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "titulo": "Robô Programador",
     "descricao": "Escreve a sequência de instruções e leva o robô até ao tesouro. Seis níveis, cada um mais difícil.",
     "estado": "agendada",
-    "disponivelEm": "2026-11-02T08:30:00.000Z"
+    "disponivelEm": "2026-11-02T08:25:00.000Z"
   },
   {
     "ficheiro": "conviver-na-internet-quiz.html",
@@ -47,6 +47,17 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "icone": "blocos",
     "titulo": "Torres de cores",
     "descricao": "Copiar torres de blocos, descobrir padrões e fazer torres de memória.",
+    "estado": "visivel",
+    "disponivelEm": null
+  },
+  {
+    "ficheiro": "pedro/carro-garagem.html",
+    "pagina": "pedro",
+    "disciplina": "CEA-STEAM",
+    "tema": "Caminhos e setas",
+    "icone": "carro",
+    "titulo": "Leva o carro à garagem",
+    "descricao": "Conduz o carro com as setas até à garagem da mesma cor, sem bater nos cones. No modo Programar, escolhe as setas todas antes de andar.",
     "estado": "visivel",
     "disponivelEm": null
   }
