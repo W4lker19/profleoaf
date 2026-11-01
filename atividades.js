@@ -61,6 +61,16 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "descricao": "Conduz o carro com as setas, passa pela bomba de gasolina e chega à garagem da mesma cor sem bater nos cones. No modo Programar, escolhe as setas todas antes de andar.",
     "estado": "visivel",
     "disponivelEm": null
+  },
+  {
+    "tipo": "formulario",
+    "url": "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=CP1GAB8rRU6J29bdEKCyR8IZygDJRNlBhlb6_kC9trdURFdQQ1lNUFc4WjlXUzhOMkY4M1g3NFJNTC4u",
+    "disciplina": "TIC",
+    "tema": "Formulário",
+    "titulo": "Projeto Mochilas Leves",
+    "descricao": "",
+    "estado": "visivel",
+    "disponivelEm": null
   }
 ]/*ATIVIDADES-FIM*/;
 
