@@ -62,6 +62,33 @@
   .andar:disabled, .seta:disabled, .apagar:disabled { opacity: .45; }
   body[data-modo="programar"] .programa, body[data-modo="programar"] .botoes-prog { display: flex; }
 
+  /* Qual é o programa? */
+  .opcoes { display: none; flex-direction: column; gap: 12px; }
+  body[data-modo="escolher"] .opcoes { display: flex; }
+  body[data-modo="escolher"] .setas, body[data-modo="escolher"] .botoes-prog, body[data-modo="escolher"] .programa { display: none !important; }
+  .opcao { display: flex; align-items: center; gap: 10px; background: var(--paper); border: 5px solid var(--ink); border-radius: 18px; padding: 8px 12px; cursor: pointer; box-shadow: 0 6px 0 rgba(27,42,57,.22); max-width: min(520px, 46vw); font: inherit; text-align: left; }
+  .opcao b { flex: none; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; }
+  .opcao .fila { display: flex; flex-wrap: wrap; gap: 4px; }
+  .opcao .fila i { width: 34px; height: 34px; border-radius: 8px; border: 2.5px solid var(--ink); background: #fff1c2; display: flex; align-items: center; justify-content: center; }
+  .opcao .fila i svg { width: 70%; height: 70%; }
+  .opcao .fila i.agora { background: #9be0b4; } .opcao .fila i.erro { background: #f3b2a9; }
+  .opcao.errada { opacity: .4; box-shadow: none; } .opcao:disabled { cursor: default; }
+  .opcao:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 3px 0 rgba(27,42,57,.22); }
+
+  /* Oficina */
+  .oficina { display: none; flex: 1; min-height: 0; align-items: center; justify-content: center; gap: clamp(20px, 5vw, 70px); padding: 10px 16px 20px; }
+  body[data-modo="oficina"] .oficina { display: flex; }
+  body[data-modo="oficina"] .jogo, body[data-modo="oficina"] .so-jogo { display: none !important; }
+  .montra { width: min(46vh, 40vw); height: min(46vh, 40vw); background: #dfe8f2; border: 5px solid var(--ink); border-radius: 26px; display: flex; align-items: center; justify-content: center; }
+  .montra svg { width: 80%; height: 80%; transform: rotate(90deg); }
+  .pecas { display: flex; flex-direction: column; gap: 16px; align-items: center; }
+  .pecas h2 { margin: 0; font-size: clamp(20px, 2.6vw, 28px); }
+  .linha { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .amostra { width: clamp(70px, 9vw, 104px); height: clamp(70px, 9vw, 104px); border-radius: 22px; border: 6px solid var(--ink); cursor: pointer; box-shadow: 0 6px 0 rgba(27,42,57,.22); padding: 0; background: #fff; display: flex; align-items: center; justify-content: center; }
+  .amostra svg { width: 78%; height: 78%; }
+  .amostra[aria-pressed="true"] { outline: 6px solid var(--ok); outline-offset: 4px; }
+  .pronto { font: 700 clamp(22px, 2.8vw, 32px) Arial, sans-serif; background: #9be0b4; border: 6px solid var(--ink); border-radius: 22px; padding: 12px 30px; cursor: pointer; box-shadow: 0 7px 0 rgba(27,42,57,.25); }
+
   .festa { position: fixed; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: 5; }
   .festa b { font-size: clamp(44px, 9vw, 110px); color: var(--ok); background: rgba(255,255,255,.93); border: 6px solid var(--ok); border-radius: 30px; padding: 10px 40px; opacity: 0; transform: scale(.6); transition: .25s; }
   .festa.on b { opacity: 1; transform: scale(1); }
@@ -73,8 +100,9 @@
 <body data-modo="programar">
   <div class="barra" aria-label="Opções para a professora">
     <div class="contagem" id="contagem" aria-live="polite"></div>
-    <div class="grupo"><span>Nível</span><button data-nivel="1" aria-pressed="true">1</button><button data-nivel="2" aria-pressed="false">2</button><button data-nivel="3" aria-pressed="false">3</button><button data-nivel="4" aria-pressed="false">4</button><button data-nivel="5" aria-pressed="false">5</button></div>
-    <div class="grupo"><button id="b-som" aria-pressed="true">Som</button><button id="b-novo">Outro caminho</button><a href="/pedro/">← Início</a></div>
+    <div class="grupo"><span>Atividade</span><button data-modo="oficina" aria-pressed="false">Oficina</button><button data-modo="programar" aria-pressed="true">Programar</button><button data-modo="escolher" aria-pressed="false">Qual é o programa?</button></div>
+    <div class="grupo so-jogo"><span>Nível</span><button data-nivel="1" aria-pressed="true">1</button><button data-nivel="2" aria-pressed="false">2</button><button data-nivel="3" aria-pressed="false">3</button><button data-nivel="4" aria-pressed="false">4</button><button data-nivel="5" aria-pressed="false">5</button></div>
+    <div class="grupo"><button id="b-som" aria-pressed="true">Som</button><button id="b-novo" class="so-jogo">Outro caminho</button><a href="/pedro/">← Início</a></div>
   </div>
 
   <main class="jogo">
@@ -90,8 +118,17 @@
         <button class="seta" data-d="2" aria-label="Baixo"></button>
       </div>
       <div class="botoes-prog"><button class="apagar" id="b-apagar">Apagar</button><button class="andar" id="b-andar">▶ Andar</button></div>
+      <div class="opcoes" id="opcoes" aria-label="Escolhe o programa certo"></div>
     </div>
   </main>
+  <section class="oficina" aria-label="Oficina">
+    <div class="montra" id="montra"></div>
+    <div class="pecas">
+      <h2>Cor</h2><div class="linha" id="o-cores"></div>
+      <h2>Autocolante</h2><div class="linha" id="o-auto"></div>
+      <button class="pronto" id="b-pronto">Pronto! Vamos programar ▶</button>
+    </div>
+  </section>
   <div class="festa" id="festa"><b>Muito bem!</b></div>
 
 <script>
@@ -107,18 +144,24 @@ const NIVEIS = {
   5: { n: 7, min: 10, max: 15, cones: 9, garagens: 2, bomba: true, desvio: true },
 };
 const st = { modo: 'programar', nivel: 1, som: true, mapa: null, carro: null, prog: [], ocupado: false, errou: false,
-  stats: { conduzir: [0, 0], programar: [0, 0] } };
+  stats: { programar: [0, 0], escolher: [0, 0] }, meu: { cor: null, auto: 'nenhum' } };
 const $ = id => document.getElementById(id);
 const rnd = n => Math.floor(Math.random() * n);
 
 const setaSVG = d => `<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(${d * 90} 50 50)"><path d="M50 8 L88 50 H64 V92 H36 V50 H12 Z" fill="#1b2a39"/></g></svg>`;
-const carroSVG = c => `<svg viewBox="0 0 100 100" aria-hidden="true">
+const AUTO = {
+  nenhum: () => '',
+  riscas: () => '<rect x="41" y="10" width="6" height="82" fill="#fff" opacity=".9"/><rect x="53" y="10" width="6" height="82" fill="#fff" opacity=".9"/>',
+  estrela: () => '<path transform="translate(50,56) scale(.62)" d="M0 -20l5 11 12 1.3-9 8 2.6 11.7L0 6l-10.6 6 2.6-11.7-9-8L-5 -9z" fill="#ffe58a" stroke="#1b2a39" stroke-width="3"/>',
+  raio: () => '<path d="M57 47 L41 58 h10 l-8 10 l18 -13 h-10 l6 -8 z" fill="#ffe58a" stroke="#1b2a39" stroke-width="2.2" stroke-linejoin="round"/>',
+};
+const carroSVG = (c, auto) => { auto = auto || (st.meu.cor ? st.meu.auto : 'nenhum'); return `<svg viewBox="0 0 100 100" aria-hidden="true">
   <rect x="14" y="20" width="12" height="20" rx="4" fill="#1b2a39"/><rect x="74" y="20" width="12" height="20" rx="4" fill="#1b2a39"/>
   <rect x="14" y="62" width="12" height="20" rx="4" fill="#1b2a39"/><rect x="74" y="62" width="12" height="20" rx="4" fill="#1b2a39"/>
-  <rect x="22" y="8" width="56" height="86" rx="18" fill="${COR[c]}" stroke="#1b2a39" stroke-width="5"/>
+  <rect x="22" y="8" width="56" height="86" rx="18" fill="${COR[c]}" stroke="#1b2a39" stroke-width="5"/>${auto === "riscas" ? AUTO.riscas() : ""}
   <path d="M30 34 q20 -10 40 0 l-4 14 h-32 z" fill="#cfe8f7" stroke="#1b2a39" stroke-width="3.5"/>
   <rect x="32" y="62" width="36" height="14" rx="5" fill="#cfe8f7" stroke="#1b2a39" stroke-width="3.5"/>
-  <circle cx="33" cy="15" r="4.5" fill="#ffe58a" stroke="#1b2a39" stroke-width="2"/><circle cx="67" cy="15" r="4.5" fill="#ffe58a" stroke="#1b2a39" stroke-width="2"/></svg>`;
+  <circle cx="33" cy="15" r="4.5" fill="#ffe58a" stroke="#1b2a39" stroke-width="2"/><circle cx="67" cy="15" r="4.5" fill="#ffe58a" stroke="#1b2a39" stroke-width="2"/>${auto !== "riscas" ? AUTO[auto]() : ""}</svg>`; };
 const garagemSVG = c => `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M8 44 L50 10 L92 44 V92 H8 Z" fill="${COR[c]}" stroke="#1b2a39" stroke-width="5" stroke-linejoin="round"/>
   <rect x="24" y="50" width="52" height="42" fill="#fff" stroke="#1b2a39" stroke-width="4"/><path d="M24 61 H76 M24 72 H76 M24 83 H76" stroke="#9fb1c4" stroke-width="3"/></svg>`;
 const bombaSVG = ok => `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="22" y="14" width="44" height="76" rx="8" fill="${ok ? '#b8c6d6' : '#2a5d8f'}" stroke="#1b2a39" stroke-width="5"/>
@@ -159,7 +202,7 @@ function gerar() {
   const L = NIVEIS[st.nivel];
   const k = p => p[0] + ',' + p[1];
   for (let t = 0; t < 5000; t++) {
-    const n = L.n, cor = CORES[rnd(4)];
+    const n = L.n, cor = st.meu.cor || CORES[rnd(4)];
     const m = { n, cor, cones: new Set(), outra: null, outraCor: null, bomba: null };
     const ini = [rnd(n), rnd(n)], gar = [rnd(n), rnd(n)];
     if (k(ini) === k(gar) || (ini[0] === gar[0] || ini[1] === gar[1])) continue;
@@ -191,7 +234,7 @@ function tamanhos() {
   const w = window.innerWidth, h = window.innerHeight - 70;
   const prog = st.modo === 'programar';
   let bt = Math.max(60, Math.min(112, (h - (prog ? 360 : 120)) / 3.2));
-  let tam = Math.min(h - 20, w - (bt * 3 + 60) - 70);
+  let tam = Math.min(h - 20, w - (st.modo === 'escolher' ? Math.min(520, w * .46) + 40 : bt * 3 + 60) - 70);
   if (tam < 260) { tam = 260; bt = Math.max(56, (w - tam - 100) / 3.3); }
   const r = document.documentElement.style;
   r.setProperty('--tam', tam + 'px'); r.setProperty('--bt', bt + 'px');
@@ -217,7 +260,7 @@ function desenhar() {
 }
 function missao() {
   const m = st.mapa;
-  const extra = st.modo === 'programar' ? `<small style="font-size:15px;color:var(--muted);font-weight:400;margin-left:6px">${st.prog.length} setas (mínimo ${m.min})</small>` : '';
+  const extra = st.modo === 'programar' && st.mapa ? `<small style="font-size:15px;color:var(--muted);font-weight:400;margin-left:6px">${st.prog.length} setas (mínimo ${m.min})</small>` : '';
   $('missao').innerHTML = `${carroSVG(m.cor)}<span>→</span>${m.bomba ? bombaSVG(st.gasolina) + '<span>→</span>' : ''}${garagemSVG(m.cor)}${extra}`;
 }
 function desenharCarro(instant) {
@@ -229,20 +272,87 @@ function desenharCarro(instant) {
   if (instant) { void car.offsetWidth; car.style.transition = ''; }
 }
 
-function contagem() { const s = st.stats[st.modo]; $('contagem').innerHTML = `Nível ${st.nivel}: <b>${s[0]}</b> feitas · <b>${s[1]}</b> à primeira`; }
+function contagem() { const s = st.stats[st.modo]; if (!s) { $('contagem').innerHTML = 'Oficina'; return; } $('contagem').innerHTML = `${st.modo === 'escolher' ? 'Qual é o programa?' : 'Programar'} · nível ${st.nivel}: <b>${s[0]}</b> feitas · <b>${s[1]}</b> à primeira`; }
 
 function novo() {
   st.mapa = gerar(); st.carro = { x: st.mapa.ini[0], y: st.mapa.ini[1], d: 0 }; st.prog = []; st.ocupado = false; st.errou = false; st.gasolina = false;
   // o carro começa virado para a garagem quando dá
   const g = st.mapa.gar; st.carro.d = g[1] < st.carro.y ? 0 : g[0] > st.carro.x ? 1 : g[1] > st.carro.y ? 2 : 3;
   desenhar(); desenharPrograma(); contagem(); bloquear(false);
+  if (st.modo === 'escolher') gerarOpcoes();
 }
-function bloquear(b) { document.querySelectorAll('.seta, #b-andar, #b-apagar').forEach(x => x.disabled = b); if (!b && st.modo === 'programar') $('b-andar').disabled = !st.prog.length; }
+function bloquear(b) { document.querySelectorAll('.seta, #b-andar, #b-apagar, .opcao:not(.errada)').forEach(x => x.disabled = b); if (!b && st.modo === 'programar') $('b-andar').disabled = !st.prog.length; }
 
 function desenharPrograma(ativo, erro) {
   const p = $('programa'); if (st.mapa) missao();
   if (!st.prog.length) { p.innerHTML = '<span class="vazio">Escolhe as setas</span>'; return; }
   p.innerHTML = st.prog.map((d, i) => `<i class="${i === ativo ? (erro ? 'erro' : 'agora') : ''}">${setaSVG(d)}</i>`).join('');
+}
+
+// simula um programa sem mexer no ecrã: devolve true se chega à garagem certa
+function simular(m, prog) {
+  let x = m.ini[0], y = m.ini[1], gas = false;
+  for (const d of prog) {
+    x += DX[d]; y += DY[d]; const k = x + ',' + y;
+    if (x < 0 || y < 0 || x >= m.n || y >= m.n || m.cones.has(k) || k === m.outra) return false;
+    if (k === m.bomba) gas = true;
+    if (x === m.gar[0] && y === m.gar[1]) return !m.bomba || gas;
+  }
+  return false;
+}
+function solucao(m) {
+  const pth = (from, to, bloq) => { const prev = { [from]: null }; const q = [from];
+    while (q.length) { const k = q.shift(); if (k === to) break; const [x, y] = k.split(',').map(Number);
+      for (let d = 0; d < 4; d++) { const nx = x + DX[d], ny = y + DY[d], nk = nx + ',' + ny;
+        if (nx < 0 || ny < 0 || nx >= m.n || ny >= m.n || m.cones.has(nk) || nk === m.outra || nk === bloq || nk in prev) continue; prev[nk] = [k, d]; q.push(nk); } }
+    const out = []; let k = to; while (prev[k]) { out.unshift(prev[k][1]); k = prev[k][0]; } return out; };
+  const ini = m.ini.join(','), gar = m.gar.join(',');
+  return m.bomba ? [...pth(ini, m.bomba, gar), ...pth(m.bomba, gar)] : pth(ini, gar);
+}
+const LETRAS = [['A', '#7a4fb5'], ['B', '#2a5d8f'], ['C', '#c2417a']];
+function gerarOpcoes() {
+  const m = st.mapa, certa = solucao(m), vistas = new Set([certa.join('')]), erradas = [];
+  const mutar = p => { const q = p.slice(), i = 1 + rnd(Math.max(1, q.length - 2)), t = rnd(4);
+    if (t === 0) q[i] = (q[i] + (rnd(2) ? 1 : 3)) % 4;                       // troca uma seta
+    else if (t === 1 && i < q.length - 1 && q[i] !== q[i + 1]) [q[i], q[i + 1]] = [q[i + 1], q[i]]; // troca a ordem de duas
+    else if (t === 2) q.splice(i, 1);                                          // falta uma seta
+    else q.splice(i, 0, q[i]);                                                 // seta a mais
+    return q; };
+  for (let g = 0; erradas.length < 2 && g < 400; g++) { const q = mutar(certa); const k = q.join(''); if (!vistas.has(k) && !simular(m, q)) { vistas.add(k); erradas.push(q); } }
+  const ops = [certa, ...erradas].map(p => ({ p, certa: p === certa })).sort(() => Math.random() - .5);
+  st.opcoes = ops;
+  $('opcoes').innerHTML = ops.map((o, i) => `<button class="opcao" data-i="${i}" aria-label="Programa ${LETRAS[i][0]}"><b style="background:${LETRAS[i][1]}">${LETRAS[i][0]}</b><span class="fila">${o.p.map(d => `<i>${setaSVG(d)}</i>`).join('')}</span></button>`).join('');
+  $('opcoes').querySelectorAll('.opcao').forEach(b => b.addEventListener('click', () => escolherOpcao(+b.dataset.i)));
+}
+async function escolherOpcao(i) {
+  if (st.ocupado) return;
+  const o = st.opcoes[i], btn = $('opcoes').querySelector(`.opcao[data-i="${i}"]`), chips = btn.querySelectorAll('.fila i');
+  st.ocupado = true; st.ultimaFala = false; bloquear(true); voltarPartida();
+  await new Promise(r => setTimeout(r, 300));
+  for (let j = 0; j < o.p.length; j++) {
+    chips.forEach((c, k) => c.classList.toggle('agora', k === j));
+    const r = mover(o.p[j]);
+    await new Promise(r => setTimeout(r, 480));
+    if (r === 'chegou') { st.ocupado = false; return chegou(); }
+    if (r === 'bomba') falar('Gasolina!');
+    if (r === 'bate' || r === 'errada' || r === 'semgasolina') { chips[j].classList.add('erro'); if (r === 'bate') bate(); else { st.ultimaFala = true; falar(r === 'errada' ? 'Esta garagem não é desta cor.' : 'Primeiro, a gasolina!'); } break; }
+  }
+  st.errou = true; if (!st.ultimaFala) falar('Este não chega. Experimenta outro.');
+  await new Promise(r => setTimeout(r, 1000));
+  btn.classList.add('errada'); chips.forEach(c => c.classList.remove('agora'));
+  voltarPartida(); st.ocupado = false; bloquear(false); btn.disabled = true;
+}
+
+// Oficina
+const NOMECOR = { vermelho: 'Vermelho', azul: 'Azul', amarelo: 'Amarelo', verde: 'Verde' };
+function oficina() {
+  const cor = st.meu.cor || 'vermelho';
+  $('montra').innerHTML = carroSVG(cor, st.meu.auto);
+  $('o-cores').innerHTML = CORES.map(c => `<button class="amostra" data-cor="${c}" aria-label="${NOMECOR[c]}" aria-pressed="${c === cor}" style="background:${COR[c]}"></button>`).join('');
+  $('o-auto').innerHTML = Object.keys(AUTO).map(a => `<button class="amostra" data-auto="${a}" aria-label="${a}" aria-pressed="${a === st.meu.auto}">${carroSVG(cor, a)}</button>`).join('');
+  $('o-cores').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { st.meu.cor = b.dataset.cor; falar(NOMECOR[st.meu.cor]); oficina(); }));
+  $('o-auto').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { st.meu.cor = st.meu.cor || 'vermelho'; st.meu.auto = b.dataset.auto; oficina(); }));
+  contagem();
 }
 
 // tenta mover; devolve 'ok', 'bate', 'chegou' ou 'errada'
@@ -298,27 +408,22 @@ async function andar() {
 
 document.querySelectorAll('.seta').forEach(b => { b.innerHTML = setaSVG(+b.dataset.d); b.addEventListener('click', () => {
   if (st.ocupado) return; const d = +b.dataset.d;
-  if (st.modo === 'conduzir') {
-    const r = mover(d);
-    if (r === 'bate') bate();
-    else if (r === 'chegou') chegou();
-    else if (r === 'errada') { st.errou = true; falar('Esta garagem não é desta cor.'); }
-    else if (r === 'semgasolina') { st.errou = true; falar('Primeiro, a gasolina!'); }
-    else if (r === 'bomba') { falar('Gasolina!'); }
-  } else {
+  {
     if (st.prog.length >= 20) return; st.prog.push(d); desenharPrograma(); bloquear(false);
   }
 }); });
 $('b-andar').addEventListener('click', andar);
 $('b-apagar').addEventListener('click', () => { if (st.ocupado) return; st.prog.pop(); desenharPrograma(); bloquear(false); });
 function marcar(attr, val) { document.querySelectorAll(`button[data-${attr}]`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset[attr] == val))); }
-document.querySelectorAll('button[data-modo]').forEach(b => b.addEventListener('click', () => { st.modo = b.dataset.modo; document.body.dataset.modo = st.modo; marcar('modo', st.modo); novo(); }));
+function mudarModo(m) { st.modo = m; document.body.dataset.modo = m; marcar('modo', m); if (m === 'oficina') oficina(); else novo(); }
+document.querySelectorAll('button[data-modo]').forEach(b => b.addEventListener('click', () => mudarModo(b.dataset.modo)));
+$('b-pronto').addEventListener('click', () => { if (!st.meu.cor) st.meu.cor = 'vermelho'; falar('Vamos programar!'); mudarModo('programar'); });
 document.querySelectorAll('button[data-nivel]').forEach(b => b.addEventListener('click', () => { st.nivel = +b.dataset.nivel; marcar('nivel', st.nivel); novo(); }));
 $('b-som').addEventListener('click', () => { st.som = !st.som; $('b-som').setAttribute('aria-pressed', String(st.som)); });
-$('b-novo').addEventListener('click', novo);
+$('b-novo').addEventListener('click', () => { if (st.modo !== 'oficina') novo(); });
 document.addEventListener('keydown', e => {
   const map = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 };
-  if (e.key in map) { e.preventDefault(); document.querySelector(`.seta[data-d="${map[e.key]}"]`).click(); }
+  if (e.key in map && st.modo === 'programar') { e.preventDefault(); document.querySelector(`.seta[data-d="${map[e.key]}"]`).click(); }
   else if (e.key === 'Enter' && st.modo === 'programar') { e.preventDefault(); andar(); }
   else if (e.key === 'Backspace' && st.modo === 'programar') { e.preventDefault(); $('b-apagar').click(); }
 });
