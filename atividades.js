@@ -27,8 +27,8 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "icone": "robo",
     "titulo": "Robô Programador",
     "descricao": "Escreve a sequência de instruções e leva o robô até ao tesouro. Seis níveis, cada um mais difícil.",
-    "estado": "agendada",
-    "disponivelEm": "2026-11-02T08:25:00.000Z"
+    "estado": "oculta",
+    "disponivelEm": null
   },
   {
     "ficheiro": "conviver-na-internet-quiz.html",
