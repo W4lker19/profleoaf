@@ -40,9 +40,9 @@
   @keyframes salta { 50% { transform: var(--rot) scale(1.18); } }
 
   /* comandos */
-  .comandos { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .comandos { display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .missao { display: flex; align-items: center; gap: 12px; font-size: clamp(18px, 2.4vw, 26px); font-weight: 700; background: var(--paper); border: 3px solid var(--line); border-radius: 18px; padding: 8px 18px; }
-  .missao svg { width: 54px; height: 54px; }
+  .missao svg { width: 44px; height: 44px; }
   .setas { display: grid; grid-template-columns: repeat(3, var(--bt)); grid-template-rows: repeat(3, var(--bt)); gap: 10px; }
   .seta { width: var(--bt); height: var(--bt); border-radius: 22px; border: 6px solid var(--ink); background: #fff1c2; cursor: pointer; box-shadow: 0 7px 0 rgba(27,42,57,.25); display: flex; align-items: center; justify-content: center; padding: 0; }
   .seta svg { width: 62%; height: 62%; }
@@ -50,8 +50,8 @@
   .seta[data-d="0"] { grid-area: 1 / 2; } .seta[data-d="3"] { grid-area: 2 / 1; } .seta[data-d="1"] { grid-area: 2 / 3; } .seta[data-d="2"] { grid-area: 3 / 2; }
   .centro { grid-area: 2 / 2; border-radius: 50%; background: #dfe8f2; border: 4px dashed #b8c6d6; margin: 14%; }
 
-  .programa { display: none; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; min-height: calc(var(--bt) * .62 + 12px); max-width: calc(var(--bt) * 3 + 20px + 120px); background: var(--paper); border: 3px dashed #9fb1c4; border-radius: 16px; padding: 6px; }
-  .programa i { width: calc(var(--bt) * .52); height: calc(var(--bt) * .52); border-radius: 10px; border: 3px solid var(--ink); background: #fff1c2; display: flex; align-items: center; justify-content: center; }
+  .programa { display: none; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; min-height: calc(var(--bt) * .42 + 18px); max-width: calc(var(--bt) * 3 + 20px + 180px); min-width: calc(var(--bt) * 3 + 20px); background: var(--paper); border: 3px dashed #9fb1c4; border-radius: 16px; padding: 6px; }
+  .programa i { width: calc(var(--bt) * .42); height: calc(var(--bt) * .42); border-radius: 10px; border: 3px solid var(--ink); background: #fff1c2; display: flex; align-items: center; justify-content: center; }
   .programa i svg { width: 70%; height: 70%; }
   .programa i.agora { background: #9be0b4; transform: scale(1.12); }
   .programa i.erro { background: #f3b2a9; }
@@ -70,10 +70,9 @@
   @media (prefers-reduced-motion: reduce) { .carro, .carro svg { transition: none; } .carro.bate svg, .carro.chegou svg, .estrela { animation: none; } }
 </style>
 </head>
-<body data-modo="conduzir">
+<body data-modo="programar">
   <div class="barra" aria-label="Opções para a professora">
     <div class="contagem" id="contagem" aria-live="polite"></div>
-    <div class="grupo"><span>Modo</span><button data-modo="conduzir" aria-pressed="true">Conduzir</button><button data-modo="programar" aria-pressed="false">Programar</button></div>
     <div class="grupo"><span>Nível</span><button data-nivel="1" aria-pressed="true">1</button><button data-nivel="2" aria-pressed="false">2</button><button data-nivel="3" aria-pressed="false">3</button><button data-nivel="4" aria-pressed="false">4</button><button data-nivel="5" aria-pressed="false">5</button></div>
     <div class="grupo"><button id="b-som" aria-pressed="true">Som</button><button id="b-novo">Outro caminho</button><a href="/pedro/">← Início</a></div>
   </div>
@@ -107,7 +106,7 @@ const NIVEIS = {
   4: { n: 6, min: 8, max: 12, cones: 6, garagens: 2, bomba: true },
   5: { n: 7, min: 10, max: 15, cones: 9, garagens: 2, bomba: true, desvio: true },
 };
-const st = { modo: 'conduzir', nivel: 1, som: true, mapa: null, carro: null, prog: [], ocupado: false, errou: false,
+const st = { modo: 'programar', nivel: 1, som: true, mapa: null, carro: null, prog: [], ocupado: false, errou: false,
   stats: { conduzir: [0, 0], programar: [0, 0] } };
 const $ = id => document.getElementById(id);
 const rnd = n => Math.floor(Math.random() * n);
@@ -191,7 +190,7 @@ function gerar() {
 function tamanhos() {
   const w = window.innerWidth, h = window.innerHeight - 70;
   const prog = st.modo === 'programar';
-  let bt = Math.max(64, Math.min(120, (h - (prog ? 230 : 120)) / 3.3));
+  let bt = Math.max(60, Math.min(112, (h - (prog ? 360 : 120)) / 3.2));
   let tam = Math.min(h - 20, w - (bt * 3 + 60) - 70);
   if (tam < 260) { tam = 260; bt = Math.max(56, (w - tam - 100) / 3.3); }
   const r = document.documentElement.style;
@@ -230,7 +229,7 @@ function desenharCarro(instant) {
   if (instant) { void car.offsetWidth; car.style.transition = ''; }
 }
 
-function contagem() { const s = st.stats[st.modo]; $('contagem').innerHTML = `${st.modo === 'conduzir' ? 'Conduzir' : 'Programar'} · nível ${st.nivel}: <b>${s[0]}</b> feitas · <b>${s[1]}</b> à primeira`; }
+function contagem() { const s = st.stats[st.modo]; $('contagem').innerHTML = `Nível ${st.nivel}: <b>${s[0]}</b> feitas · <b>${s[1]}</b> à primeira`; }
 
 function novo() {
   st.mapa = gerar(); st.carro = { x: st.mapa.ini[0], y: st.mapa.ini[1], d: 0 }; st.prog = []; st.ocupado = false; st.errou = false; st.gasolina = false;
