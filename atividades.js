@@ -27,7 +27,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "icone": "robo",
     "titulo": "Robô Programador",
     "descricao": "Escreve a sequência de instruções e leva o robô até ao tesouro. Seis níveis, cada um mais difícil.",
-    "estado": "oculta",
+    "estado": "visivel",
     "disponivelEm": null
   },
   {
