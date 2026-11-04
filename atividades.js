@@ -15,8 +15,8 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "disciplina": "TIC · 7.º ano",
     "tema": "Segurança",
     "icone": "seguranca",
-    "titulo": "Missão Segurança",
-    "descricao": "Descobre as pistas nas mensagens falsas e faz o check-up de segurança do teu computador.",
+    "titulo": "Segurança digital",
+    "descricao": "Identifica os sinais de alerta em mensagens falsas e verifica a proteção do teu computador.",
     "estado": "agendada",
     "disponivelEm": "2026-11-09T08:00:00"
   },

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <script>document.write('<script src="/atividades.js?v=' + Math.floor(Date.now() / 60000) + '"><\/script>');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Missão Segurança</title>
+<title>Segurança digital</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lexend:wght@400;500;600&display=swap">
@@ -110,8 +110,8 @@ table.sum td:last-child { text-align: right; font-variant-numeric: tabular-nums;
 <div class="wrap">
   <a class="home" href="index.html">← Todas as atividades</a>
   <header>
-    <h1>Missão Segurança</h1>
-    <p class="sub">Parte 1: descobre as mensagens falsas. Parte 2: faz o check-up de segurança do teu computador.</p>
+    <h1>Segurança digital</h1>
+    <p class="sub">Parte 1: analisa mensagens e identifica as falsas. Parte 2: verifica a proteção do teu computador.</p>
   </header>
   <div class="progress" id="progressRow" hidden>
     <span id="count"></span>
@@ -127,14 +127,14 @@ table.sum td:last-child { text-align: right; font-variant-numeric: tabular-nums;
 const M = [
   { tipo: 'SMS', de: 'RapidEntregas', fake: true,
     corpo: [['RapidEntregas: A sua encomenda ficou retida. '], ['Pague 1,99 € de taxa', 'pag'], [' em '], ['rapid-entregas-pt.info/pagar', 'link'], [' '], ['até às 23h59 de hoje', 'urg'], ['.']],
-    p: { pag: 'Pede dinheiro por uma encomenda que não esperavas.', link: 'O endereço não é de nenhuma empresa conhecida e termina em .info.', urg: 'Pressa: querem que pagues sem pensar.' } },
+    p: { pag: 'Pede um pagamento por uma encomenda que não esperavas.', link: 'O endereço não é de nenhuma empresa conhecida e termina em .info.', urg: 'Pressa: querem que pagues sem pensar.' } },
   { tipo: 'Email', de: 'Suporte Escola', email: 'suporte-escola@conta-verificar.com', assunto: 'A sua conta vai ser desativada', fake: true,
     remetentePista: 'rem',
     corpo: [['Olá, aluno. '], ['A sua conta será desativada em 24 horas', 'urg'], ['. Para a manter, '], ['confirme a sua palavra-passe', 'pw'], [' no seguinte endereço: '], ['conta-verificar.com/escola', 'link'], ['. Obrigado.']],
     p: { rem: 'O email não vem do domínio da escola (agvaf.edu.pt).', urg: 'Ameaça e pressa para te assustar.', pw: 'Ninguém da escola te pede a palavra-passe por email.', link: 'Endereço que não é da escola nem da Microsoft.' } },
-  { tipo: 'Email', de: 'Secretaria', email: 'secretaria@agvaf.edu.pt', assunto: 'Fotografias de turma', fake: false,
-    corpo: [['Bom dia. As fotografias de turma são tiradas na quinta-feira, no ginásio, durante a manhã. '], ['Não é preciso responder a este email.'], [' Bom trabalho.']],
-    p: {}, porque: 'Vem do domínio da escola, não pede dados nem dinheiro, não tem ligações nem pressa.' },
+  { tipo: 'Email', de: 'Secretaria', email: 'secretaria@agvaf.edu.pt', assunto: 'Atualização do horário da turma', fake: false,
+    corpo: [['Bom dia. Informamos que o horário da turma foi atualizado e pode ser consultado no GIAE a partir de segunda-feira. '], ['Não é preciso responder a este email.']],
+    p: {}, porque: 'Vem do domínio da escola, manda-te consultar a plataforma que já usas (sem ligação no email) e não pede dados, dinheiro nem pressa.' },
   { tipo: 'WhatsApp', de: '+351 9•• ••• 417 (número desconhecido)', fake: true, remetentePista: 'num',
     corpo: [['Olá! Sou eu, '], ['mudei de número', 'mud'], [' 😊 Chegou-te agora um código de 6 dígitos por SMS, foi por engano. '], ['Podes enviar-mo?', 'cod'], [' É urgente!']],
     p: { num: 'Número que não tens guardado e que não diz quem é.', mud: '"Mudei de número" é um truque comum para fingir ser alguém conhecido.', cod: 'Os códigos que chegam por SMS servem para entrar nas tuas contas. Nunca se partilham.' } },
@@ -144,10 +144,10 @@ const M = [
   { tipo: 'Teams', de: 'Prof. de TIC · canal TIC da turma', fake: false,
     corpo: [['Bom dia! Na próxima aula precisamos do portátil carregado. '], ['Tragam também o carregador.'], [' Até segunda.']],
     p: {}, porque: 'Aparece no Teams da escola, no canal da turma, e só dá uma informação. Não pede dados, dinheiro nem cliques.' },
-  { tipo: 'Email', de: 'Faturação', email: 'faturas@bancolumen-pagamentos.co', assunto: 'URGENTE: fatura em atraso', fake: true, remetentePista: 'rem',
-    corpo: [['Caro cliente, tem uma fatura em atraso. '], ['Se não pagar hoje, terá de pagar uma multa', 'ame'], ['. Veja os detalhes no anexo.']],
-    anexo: ['Fatura_2026.pdf.exe', 'exe'],
-    p: { rem: 'Endereço estranho, que termina em .co em vez de um domínio conhecido.', ame: 'Ameaça de multa para te assustar.', exe: 'O anexo termina em .exe: é um programa disfarçado de PDF. Pode ser um vírus.' } },
+  { tipo: 'Email', de: 'Turma 7', email: 'resumos.turma7@mail-gratis.net', assunto: 'Resumos para o teste de Ciências', fake: true, remetentePista: 'rem',
+    corpo: [['Olá! Fiz os resumos da matéria toda para o teste. '], ['Abre já, o teste é amanhã', 'urg'], ['. Estão no anexo.']],
+    anexo: ['Resumos_Ciencias.pdf.exe', 'exe'],
+    p: { rem: 'Não diz quem é: "Turma 7" não é uma pessoa, e o endereço não é de um colega nem da escola.', urg: 'Pressa para abrires o anexo sem pensar.', exe: 'O anexo termina em .exe: é um programa disfarçado de PDF. Pode instalar software malicioso.' } },
   { tipo: 'SMS', de: 'Conta escolar', fake: false,
     contexto: 'Acabaste de pedir para recuperar a palavra-passe da tua conta da escola.',
     corpo: [['O teu código de verificação é 482913. '], ['Não partilhes este código com ninguém.']],
@@ -157,7 +157,7 @@ const M = [
 const CHECK = [
   { id: 'av', titulo: 'Antivírus ligado',
     passos: ['Clica no botão Iniciar e escreve <b>Segurança do Windows</b>. Abre a aplicação.', 'Clica em <b>Proteção contra vírus e ameaças</b>.', 'Lê o que aparece por baixo do título.'],
-    q: 'O que aparece?', o: ['Não são necessárias ações (tudo bem)', 'Ações recomendadas (há um aviso)', 'Tenho outro antivírus', 'Não consegui ver'] },
+    q: 'O que aparece?', o: ['Não são necessárias ações', 'Ações recomendadas', 'Tenho outro antivírus', 'Não consegui ver'] },
   { id: 'scan', titulo: 'Análise rápida',
     passos: ['Na mesma página, clica em <b>Análise rápida</b>.', 'Espera que termine (1 a 3 minutos). Enquanto esperas, podes fazer o passo 3.', 'Lê o resultado.'],
     q: 'Qual foi o resultado?', o: ['Nenhuma ameaça atual', 'Encontrou ameaças', 'Não consegui fazer a análise'] },
@@ -168,11 +168,11 @@ const CHECK = [
     passos: ['Abre as <b>Definições</b> (Iniciar > Definições, ou Windows + I).', 'Clica em <b>Windows Update</b>.', 'Lê o estado. <b>Não reinicies o computador agora.</b>'],
     q: 'O que aparece?', o: ['Está atualizado', 'Há atualizações para instalar ou é preciso reiniciar', 'Não consegui ver'] },
   { id: 'apps', titulo: 'Programas instalados',
-    passos: ['Nas Definições, clica em <b>Aplicações</b> > <b>Aplicações instaladas</b>.', 'Percorre a lista com calma.', 'Para desinstalar, usa-se o botão ⋯ ao lado do programa > Desinstalar. <b>Hoje não desinstales nada:</b> o computador da Escola Digital é da escola.'],
+    passos: ['Nas Definições, clica em <b>Aplicações</b> > <b>Aplicações instaladas</b>.', 'Para desinstalar, usa-se o botão ⋯ ao lado do programa > Desinstalar. <b>Hoje não desinstales nada:</b> o computador da Escola Digital é da escola.'],
     q: 'Encontraste algum programa que não sabes o que é?', o: ['Não, conheço todos', 'Sim, um ou mais', 'Não consegui ver'] },
 ];
 
-const KEY = 'missao-seguranca-v2';
+const KEY = 'missao-seguranca-v3';
 const API = 'https://api.profleoaf.pt';
 const NOVO = () => ({ nome: '', turma: '', numero: '', i: 0, r: [], chk: {}, fase: 'inicio', enviado: false });
 let st = load() || NOVO();
@@ -222,8 +222,8 @@ function renderInicio() {
       <label>N.º<select id="numero"><option value="">N.º</option>${Array.from({ length: 30 }, (_, i) => i + 1).map(n => `<option ${+st.numero === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
     </div>
     <p class="help">O resultado é enviado automaticamente ao professor no fim. Confirma que o número é o teu.</p>
-    <p class="help"><b>Parte 1 (8 mensagens):</b> em cada mensagem, clica nas partes que te parecem suspeitas. Depois decide se é falsa ou verdadeira. Nas verdadeiras não há nada para marcar.</p>
-    <p class="help"><b>Parte 2 (5 passos):</b> segue as instruções no teu computador e escolhe o que aparece no teu ecrã.</p>
+    <p class="help"><b>Parte 1 (8 mensagens):</b> em cada mensagem, clica nas partes que são sinais de alerta. Depois decide se é falsa ou verdadeira. Nas verdadeiras não há nada para marcar.</p>
+    <p class="help"><b>Parte 2 (5 passos):</b> verifica a proteção do teu computador e regista o que aparece no ecrã.</p>
     <div class="row"><button class="btn" id="go">Começar a Parte 1</button></div>`;
   $('#go').onclick = () => {
     const n = $('#nome').value.trim(), t = $('#turma').value, nr = $('#numero').value;
@@ -244,7 +244,7 @@ function renderMsg() {
   main.innerHTML = `
     <span class="tag">${esc(m.tipo)}</span>
     ${m.contexto ? `<p style="margin:0"><b>Situação:</b> ${esc(m.contexto)}</p>` : ''}
-    <p class="help">Clica nas partes suspeitas (ficam amarelas). Volta a clicar para desmarcar.</p>
+    <p class="help">Marca os sinais de alerta (ficam amarelos). Volta a clicar para desmarcar.</p>
     <div class="msg ${done ? 'locked' : ''}" id="msg">${head}<div class="bodytxt">${body}</div>${att}</div>
     <div class="row" id="act">
       <button class="btn fake" id="bf">É falsa</button>
@@ -275,10 +275,10 @@ function renderMsg() {
     const right = x.dec === m.fake;
     const lista = Object.entries(m.p).map(([id, t]) => `<li>${esc(t)}</li>`).join('');
     $('#fbx').innerHTML = `
-      <div class="legend"><span class="seg hit">pista que encontraste</span><span class="seg miss">pista que faltou</span><span class="seg wrongmark">não era pista</span></div>
+      <div class="legend"><span class="seg hit">sinal identificado</span><span class="seg miss">sinal que faltou</span><span class="seg wrongmark">não era sinal de alerta</span></div>
       <div class="fb ${right ? 'ok' : 'bad'}">
-        <strong>${right ? 'Certo!' : 'Não é bem assim.'} Esta mensagem é ${m.fake ? 'FALSA' : 'VERDADEIRA'}.</strong>
-        ${m.fake ? `<span>Pistas:</span><ul>${lista}</ul>` : `<span>${esc(m.porque)}</span>`}
+        <strong>${right ? 'Correto.' : 'Incorreto.'} Esta mensagem é ${m.fake ? 'falsa' : 'verdadeira'}.</strong>
+        ${m.fake ? `<span>Sinais de alerta:</span><ul>${lista}</ul>` : `<span>${esc(m.porque)}</span>`}
       </div>`;
     $('#next').onclick = () => { if (k < M.length - 1) { st.i++; } else { st.fase = 'p1fim'; } render2(); };
   }
@@ -290,13 +290,13 @@ function renderP1Fim() {
   setProgress('Parte 1 concluída', 1, '');
   main.innerHTML = `
     <span class="tag">Parte 1 · resultado</span>
-    <h2>Acertaste ${s.dec} de ${M.length} mensagens</h2>
-    <p class="help">Encontraste ${Math.min(s.found, s.total)} de ${s.total} pistas (as partes marcadas por engano descontam).</p>
-    <div class="fb ok"><strong>Regras de ouro</strong><ul>
-      <li>Desconfia de pressa, ameaças e prémios bons demais.</li>
+    <h2>Classificaste corretamente ${s.dec} de ${M.length} mensagens</h2>
+    <p class="help">Identificaste ${Math.min(s.found, s.total)} de ${s.total} sinais de alerta (as marcações erradas descontam).</p>
+    <div class="fb ok"><strong>A reter</strong><ul>
+      <li>Desconfia de pressa, ameaças e ofertas boas demais.</li>
       <li>Vê sempre quem envia: o endereço, não só o nome.</li>
-      <li>Nunca dês palavras-passe nem códigos por mensagem.</li>
-      <li>Não abras anexos nem ligações que não esperavas. Na dúvida, confirma por outro caminho: abre tu a app ou o site oficial, ou fala com a pessoa por outro meio.</li>
+      <li>Palavras-passe e códigos de verificação não se enviam a ninguém.</li>
+      <li>Não abras anexos nem ligações que não esperavas. Na dúvida, confirma por outro canal: abre tu a app ou o site oficial, ou contacta a pessoa por outro meio.</li>
     </ul></div>
     <div class="row"><button class="btn" id="go">Começar a Parte 2</button></div>`;
   $('#go').onclick = () => { st.fase = 'p2'; render(); };
@@ -306,8 +306,8 @@ function renderCheck() {
   const n = CHECK.filter(c => st.chk[c.id] !== undefined).length;
   setProgress(`Passo ${Math.min(n + 1, CHECK.length)} de ${CHECK.length}`, n / CHECK.length, 'Parte 2');
   main.innerHTML = `
-    <span class="tag">Parte 2 · check-up do computador</span>
-    <p class="help">Faz os passos no teu computador e escolhe o que aparece. Se for o computador da sala, faz na mesma.</p>
+    <span class="tag">Parte 2 · verificação do computador</span>
+    <p class="help">Faz os passos no computador que estás a usar e regista o que aparece.</p>
     ${CHECK.map((c, i) => `
       <div class="card" style="padding:14px;background:var(--bg)">
         <h2>${i + 1}. ${c.titulo}</h2>
@@ -324,7 +324,7 @@ function renderCheck() {
 function renderFim() {
   const p1 = part1Score(), p2 = part2Score();
   const nota = Math.round(0.6 * p1.pct + 0.4 * p2);
-  setProgress('Missão concluída', 1, '');
+  setProgress('Concluído', 1, '');
   const avisos = [];
   if (st.chk.av === 1) avisos.push('O antivírus tem um aviso.');
   if (st.chk.scan === 1) avisos.push('A análise encontrou ameaças.');
@@ -333,21 +333,21 @@ function renderFim() {
   if (st.chk.apps === 1) avisos.push('Tens programas que não conheces: pesquisa o nome de cada um para saberes o que é antes de decidires se fica.');
   main.innerHTML = `
     <div class="final card" style="padding:0;background:none">
-      <span class="tag">Missão concluída</span>
+      <span class="tag">Concluído</span>
       <p class="who">${esc(st.nome)} · ${esc(st.turma)} · n.º ${esc(st.numero)}</p>
       <p class="score">${nota}</p>
-      <p class="help">Nota da mini-tarefa de Segurança (0 a 100)</p>
+      <p class="help">Classificação da mini-tarefa de Segurança (0 a 100)</p>
     </div>
     <table class="sum">
-      <tr><td>Parte 1: mensagens certas</td><td>${p1.dec} / ${M.length}</td></tr>
-      <tr><td>Parte 1: pistas encontradas</td><td>${Math.min(p1.found, p1.total)} / ${p1.total}</td></tr>
+      <tr><td>Parte 1: mensagens bem classificadas</td><td>${p1.dec} / ${M.length}</td></tr>
+      <tr><td>Parte 1: sinais de alerta identificados</td><td>${Math.min(p1.found, p1.total)} / ${p1.total}</td></tr>
       <tr><td>Parte 1 (vale 60%)</td><td>${p1.pct}</td></tr>
-      <tr><td>Parte 2: check-up (vale 40%)</td><td>${p2}</td></tr>
+      <tr><td>Parte 2: verificação do computador (vale 40%)</td><td>${p2}</td></tr>
     </table>
-    ${avisos.length ? `<div class="tip"><b>Atenção ao teu computador:</b> ${avisos.join(' ')}</div>` : '<div class="fb ok"><strong>O teu computador passou no check-up.</strong></div>'}
+    ${avisos.length ? `<div class="tip"><b>A rever no computador:</b> ${avisos.join(' ')}</div>` : '<div class="fb ok"><strong>Não foram encontrados problemas no computador.</strong></div>'}
     <div id="sent" class="sent wait">A enviar o resultado ao professor…</div>
-    <div class="row"><button class="btn ghost" id="again">Fazer outra vez (o professor vê todas as tentativas)</button></div>`;
-  $('#again').onclick = () => { if (confirm('Queres fazer a missão outra vez? Este resultado já foi enviado ao professor.')) { st = NOVO(); render(); } };
+    <div class="row"><button class="btn ghost" id="again">Repetir (o professor vê todas as tentativas)</button></div>`;
+  $('#again').onclick = () => { if (confirm('Queres repetir a atividade? Este resultado já foi enviado ao professor.')) { st = NOVO(); render(); } };
   enviar({ nota, p1: p1.pct, p2 });
 }
 
