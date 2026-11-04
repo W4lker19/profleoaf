@@ -17,7 +17,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "icone": "conversa",
     "titulo": "Conviver na Internet",
     "descricao": "Uma semana no grupo da turma: decide o que fazer em cada situação e vê como as tuas escolhas mudam o ambiente do grupo.",
-    "estado": "visivel",
+    "estado": "oculta",
     "disponivelEm": null
   },
   {
@@ -27,7 +27,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "icone": "robo",
     "titulo": "Robô Programador",
     "descricao": "Escreve a sequência de instruções e leva o robô até ao tesouro. Seis níveis, cada um mais difícil.",
-    "estado": "visivel",
+    "estado": "oculta",
     "disponivelEm": null
   },
   {
@@ -48,7 +48,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "icone": "blocos",
     "titulo": "Torres de cores",
     "descricao": "Copiar torres de blocos, descobrir padrões e fazer torres de memória.",
-    "estado": "visivel",
+    "estado": "oculta",
     "disponivelEm": null
   },
   {
@@ -59,17 +59,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "icone": "carro",
     "titulo": "Leva o carro à garagem",
     "descricao": "Pinta o teu carro na oficina, programa o caminho até à garagem (com bomba de gasolina e cones) e descobre qual dos programas leva o carro ao destino.",
-    "estado": "visivel",
-    "disponivelEm": null
-  },
-  {
-    "tipo": "formulario",
-    "url": "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=CP1GAB8rRU6J29bdEKCyR8IZygDJRNlBhlb6_kC9trdURFdQQ1lNUFc4WjlXUzhOMkY4M1g3NFJNTC4u",
-    "disciplina": "TIC",
-    "tema": "Formulário",
-    "titulo": "Projeto Mochilas Leves",
-    "descricao": "",
-    "estado": "visivel",
+    "estado": "oculta",
     "disponivelEm": null
   }
 ]/*ATIVIDADES-FIM*/;
