@@ -11,6 +11,16 @@
 
 window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
   {
+    "ficheiro": "missao-seguranca.html",
+    "disciplina": "TIC · 7.º ano",
+    "tema": "Segurança",
+    "icone": "seguranca",
+    "titulo": "Missão Segurança",
+    "descricao": "Descobre as pistas nas mensagens falsas e faz o check-up de segurança do teu computador.",
+    "estado": "agendada",
+    "disponivelEm": "2026-11-09T08:00:00"
+  },
+  {
     "ficheiro": "conviver-na-internet.html",
     "disciplina": "CEA-STEAM · 5.º ano",
     "tema": "Cidadania digital",

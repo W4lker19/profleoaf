@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<script>document.write('<script src="/atividades.js?v=' + Math.floor(Date.now() / 60000) + '"><\/script>');</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Missão Segurança</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* Parte 1: mensagens falsas (clicar nas pistas e decidir). Parte 2: check-up do portátil. Ecrã final com a nota da mini-tarefa. */
+:root {
+  --bg: #eef3f8; --paper: #ffffff; --line: #c9d8e8; --ink: #1d2b3a; --muted: #5a6b7d;
+  --accent: #2a5d8f; --accent-ink: #ffffff; --phone: #f4f7fa;
+  --ok: #1f8a4c; --ok-bg: #e2f4e9; --bad: #b8432f; --bad-bg: #fbe5e2;
+  --warn: #8a5a00; --warn-bg: #fff1cc; --mark: #ffe08a; --mark-ink: #4a3500;
+  --tag: #ffd9c4; --tag-ink: #7a3412;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Lexend", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111a24; --paper: #18232f; --line: #2c3c4d; --ink: #e6edf4; --muted: #9aabbd;
+    --accent: #5b9bd5; --accent-ink: #0d1620; --phone: #1f2c3a;
+    --ok: #5fd08f; --ok-bg: #173325; --bad: #ff8a7a; --bad-bg: #3a1d1a;
+    --warn: #f5c533; --warn-bg: #3a2f10; --mark: #6b5414; --mark-ink: #fff1cc;
+    --tag: #5a3220; --tag-ink: #ffd9c4; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111a24; --paper: #18232f; --line: #2c3c4d; --ink: #e6edf4; --muted: #9aabbd;
+  --accent: #5b9bd5; --accent-ink: #0d1620; --phone: #1f2c3a;
+  --ok: #5fd08f; --ok-bg: #173325; --bad: #ff8a7a; --bad-bg: #3a1d1a;
+  --warn: #f5c533; --warn-bg: #3a2f10; --mark: #6b5414; --mark-ink: #fff1cc;
+  --tag: #5a3220; --tag-ink: #ffd9c4; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+}
+.wrap { max-width: 780px; margin: 0 auto; display: grid; gap: 16px; }
+.home { display: inline-block; margin-bottom: 4px; font-size: .9rem; color: var(--muted); text-decoration: none; }
+.home:hover { text-decoration: underline; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: clamp(1.7rem, 4.5vw, 2.4rem); margin: 0; line-height: 1.1; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.35rem; margin: 0; }
+.sub { margin: 0; color: var(--muted); }
+.progress { display: flex; align-items: center; gap: 12px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { flex: 1; height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 99px; transition: width .3s ease; }
+.card { background: var(--paper); border-radius: 18px; padding: 20px; display: grid; gap: 14px; }
+.tag { justify-self: start; font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; background: var(--tag); color: var(--tag-ink); padding: 4px 10px; border-radius: 99px; }
+.help { font-size: .92rem; color: var(--muted); margin: 0; }
+.msg { background: var(--phone); border: 2px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; }
+.msg .head { display: grid; gap: 2px; font-size: .9rem; border-bottom: 1px dashed var(--line); padding-bottom: 8px; }
+.msg .head .k { color: var(--muted); }
+.msg .bodytxt { font-size: 1rem; }
+.seg { cursor: pointer; border-radius: 6px; padding: 1px 3px; margin: 0 -1px; border-bottom: 2px dotted var(--line); }
+.seg:hover { background: var(--bg); }
+.seg.on { background: var(--mark); color: var(--mark-ink); border-bottom-color: transparent; }
+.seg.hit { background: var(--ok-bg); color: var(--ok); outline: 2px solid var(--ok); }
+.seg.miss { background: var(--warn-bg); color: var(--warn); outline: 2px dashed var(--warn); }
+.seg.wrongmark { background: var(--bad-bg); color: var(--bad); text-decoration: line-through; }
+.locked .seg { cursor: default; }
+.attach { display: inline-block; font-size: .9rem; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font: 600 1rem var(--body); border-radius: 12px; padding: 11px 18px; border: 2px solid transparent; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+.btn.fake { background: var(--bad); color: #fff; }
+.btn.real { background: var(--ok); color: #fff; }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--warn); outline-offset: 2px; }
+.fb { border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; }
+.fb.ok { background: var(--ok-bg); } .fb.bad { background: var(--bad-bg); }
+.fb strong { font-family: var(--display); font-weight: 600; font-size: 1.05rem; }
+.fb.ok strong { color: var(--ok); } .fb.bad strong { color: var(--bad); }
+.fb ul { margin: 0; padding-left: 20px; display: grid; gap: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: .82rem; color: var(--muted); }
+.legend span { padding: 2px 8px; border-radius: 6px; }
+label { font-weight: 600; display: grid; gap: 6px; }
+input[type=text], select {
+  font: 400 1rem var(--body); color: var(--ink); background: var(--bg); border: 2px solid var(--line);
+  border-radius: 12px; padding: 10px 12px; width: 100%;
+}
+.grid3 { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .grid3 { grid-template-columns: 2fr 1fr .7fr; } }
+.sent { font-size: .95rem; border-radius: 10px; padding: 10px 12px; text-align: center; }
+.sent.ok { background: var(--ok-bg); color: var(--ok); } .sent.bad { background: var(--bad-bg); color: var(--bad); } .sent.wait { background: var(--bg); color: var(--muted); }
+ol.steps { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
+.opts { display: grid; gap: 8px; }
+.opt { font: 500 1rem var(--body); text-align: left; color: var(--ink); background: var(--bg); border: 2px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; }
+.opt:hover { border-color: var(--accent); }
+.opt.sel { border-color: var(--accent); background: var(--paper); box-shadow: inset 0 0 0 2px var(--accent); }
+.tip { font-size: .92rem; border-radius: 10px; padding: 8px 12px; background: var(--warn-bg); color: var(--warn); }
+.final { text-align: center; justify-items: center; }
+.score { font-family: var(--display); font-weight: 600; font-size: 3rem; margin: 0; font-variant-numeric: tabular-nums; line-height: 1; }
+table.sum { border-collapse: collapse; width: 100%; font-size: .95rem; text-align: left; }
+table.sum td { border-top: 1px solid var(--line); padding: 6px 4px; }
+table.sum td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.who { font-family: var(--display); font-size: 1.3rem; margin: 0; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="home" href="index.html">← Todas as atividades</a>
+  <header>
+    <h1>Missão Segurança</h1>
+    <p class="sub">Parte 1: descobre as mensagens falsas. Parte 2: faz o check-up de segurança do teu computador.</p>
+  </header>
+  <div class="progress" id="progressRow" hidden>
+    <span id="count"></span>
+    <div class="bar" aria-hidden="true"><i id="barFill"></i></div>
+    <span id="pts"></span>
+  </div>
+  <section class="card" id="main" aria-live="polite"></section>
+</div>
+
+<script>
+// Marcas, nomes e endereços são inventados (exceto o domínio da escola, agvaf.edu.pt).
+// Cada mensagem: partes de texto [texto] ou [texto, idDaPista]. As pistas explicam-se em "p".
+const M = [
+  { tipo: 'SMS', de: 'RapidEntregas', fake: true,
+    corpo: [['RapidEntregas: A sua encomenda ficou retida. '], ['Pague 1,99 € de taxa', 'pag'], [' em '], ['rapid-entregas-pt.info/pagar', 'link'], [' '], ['até às 23h59 de hoje', 'urg'], ['.']],
+    p: { pag: 'Pede dinheiro por uma encomenda que não esperavas.', link: 'O endereço não é de nenhuma empresa conhecida e termina em .info.', urg: 'Pressa: querem que pagues sem pensar.' } },
+  { tipo: 'Email', de: 'Suporte Escola', email: 'suporte-escola@conta-verificar.com', assunto: 'A sua conta vai ser desativada', fake: true,
+    remetentePista: 'rem',
+    corpo: [['Olá, aluno. '], ['A sua conta será desativada em 24 horas', 'urg'], ['. Para a manter, '], ['confirme a sua palavra-passe', 'pw'], [' no seguinte endereço: '], ['conta-verificar.com/escola', 'link'], ['. Obrigado.']],
+    p: { rem: 'O email não vem do domínio da escola (agvaf.edu.pt).', urg: 'Ameaça e pressa para te assustar.', pw: 'Ninguém da escola te pede a palavra-passe por email.', link: 'Endereço que não é da escola nem da Microsoft.' } },
+  { tipo: 'Email', de: 'Secretaria', email: 'secretaria@agvaf.edu.pt', assunto: 'Fotografias de turma', fake: false,
+    corpo: [['Bom dia. As fotografias de turma são tiradas na quinta-feira, no ginásio, durante a manhã. '], ['Não é preciso responder a este email.'], [' Bom trabalho.']],
+    p: {}, porque: 'Vem do domínio da escola, não pede dados nem dinheiro, não tem ligações nem pressa.' },
+  { tipo: 'WhatsApp', de: '+351 9•• ••• 417 (número desconhecido)', fake: true, remetentePista: 'num',
+    corpo: [['Olá! Sou eu, '], ['mudei de número', 'mud'], [' 😊 Chegou-te agora um código de 6 dígitos por SMS, foi por engano. '], ['Podes enviar-mo?', 'cod'], [' É urgente!']],
+    p: { num: 'Número que não tens guardado e que não diz quem é.', mud: '"Mudei de número" é um truque comum para fingir ser alguém conhecido.', cod: 'Os códigos que chegam por SMS servem para entrar nas tuas contas. Nunca se partilham.' } },
+  { tipo: 'Mensagem no jogo', de: 'BlocoCraft Oficial', fake: true,
+    corpo: [['Parabéns! '], ['Ganhaste 5000 diamantes grátis', 'prem'], ['! Para os receberes, '], ['inicia sessão com a tua conta', 'login'], [' em '], ['blococraft-premios.net', 'link'], ['. '], ['Oferta válida durante 10 minutos', 'urg'], ['.']],
+    p: { prem: 'Prémio bom demais para ser verdade, sem teres participado em nada.', login: 'Querem os teus dados de acesso para roubar a conta.', link: 'O site não é o do jogo.', urg: 'Pressa para não teres tempo de pensar.' } },
+  { tipo: 'Teams', de: 'Prof. de TIC · canal TIC da turma', fake: false,
+    corpo: [['Bom dia! Na próxima aula precisamos do portátil carregado. '], ['Tragam também o carregador.'], [' Até segunda.']],
+    p: {}, porque: 'Aparece no Teams da escola, no canal da turma, e só dá uma informação. Não pede dados, dinheiro nem cliques.' },
+  { tipo: 'Email', de: 'Faturação', email: 'faturas@bancolumen-pagamentos.co', assunto: 'URGENTE: fatura em atraso', fake: true, remetentePista: 'rem',
+    corpo: [['Caro cliente, tem uma fatura em atraso. '], ['Se não pagar hoje, terá de pagar uma multa', 'ame'], ['. Veja os detalhes no anexo.']],
+    anexo: ['Fatura_2026.pdf.exe', 'exe'],
+    p: { rem: 'Endereço estranho, que termina em .co em vez de um domínio conhecido.', ame: 'Ameaça de multa para te assustar.', exe: 'O anexo termina em .exe: é um programa disfarçado de PDF. Pode ser um vírus.' } },
+  { tipo: 'Email', de: 'Biblioteca Escolar', email: 'biblioteca@agvaf.edu.pt', assunto: 'Devolução de livro', fake: false,
+    corpo: [['Olá. O livro que requisitaste, "O Principezinho", deve ser devolvido até sexta-feira. '], ['Se precisares de mais tempo, passa pela biblioteca.']],
+    p: {}, porque: 'Vem da escola, fala de algo que tu fizeste (requisitaste um livro) e manda-te à biblioteca, não a um site.' },
+];
+
+const CHECK = [
+  { id: 'av', titulo: 'Antivírus ligado',
+    passos: ['Clica no botão Iniciar e escreve <b>Segurança do Windows</b>. Abre a aplicação.', 'Clica em <b>Proteção contra vírus e ameaças</b>.', 'Lê o que aparece por baixo do título.'],
+    q: 'O que aparece?', o: ['Não são necessárias ações (tudo bem)', 'Ações recomendadas (há um aviso)', 'Tenho outro antivírus', 'Não consegui ver'] },
+  { id: 'scan', titulo: 'Análise rápida',
+    passos: ['Na mesma página, clica em <b>Análise rápida</b>.', 'Espera que termine (1 a 3 minutos). Enquanto esperas, podes fazer o passo 3.', 'Lê o resultado.'],
+    q: 'Qual foi o resultado?', o: ['Nenhuma ameaça atual', 'Encontrou ameaças', 'Não consegui fazer a análise'] },
+  { id: 'fw', titulo: 'Firewall',
+    passos: ['Na Segurança do Windows, clica em <b>Firewall e proteção de rede</b>.', 'Vê se a rede que estás a usar diz <b>A firewall está ativada</b>.'],
+    q: 'A firewall está ativada?', o: ['Sim', 'Não', 'Não consegui ver'] },
+  { id: 'upd', titulo: 'Atualizações',
+    passos: ['Abre as <b>Definições</b> (Iniciar > Definições, ou Windows + I).', 'Clica em <b>Windows Update</b>.', 'Lê o estado. <b>Não reinicies o computador agora.</b>'],
+    q: 'O que aparece?', o: ['Está atualizado', 'Há atualizações para instalar ou é preciso reiniciar', 'Não consegui ver'] },
+  { id: 'apps', titulo: 'Programas instalados',
+    passos: ['Nas Definições, clica em <b>Aplicações</b> > <b>Aplicações instaladas</b>.', 'Percorre a lista com calma.', '<b>Não desinstales nada na aula.</b> Para desinstalar, usa-se o botão ⋯ ao lado do programa > Desinstalar, mas só com autorização de um adulto.'],
+    q: 'Encontraste algum programa que não sabes o que é?', o: ['Não, conheço todos', 'Sim, um ou mais (vou perguntar a um adulto)', 'Não consegui ver'] },
+];
+
+const KEY = 'missao-seguranca-v1';
+const API = 'https://api.profleoaf.pt';
+const NOVO = () => ({ nome: '', turma: '', numero: '', i: 0, r: [], chk: {}, fase: 'inicio', enviado: false });
+let st = load() || NOVO();
+function load() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+const $ = s => document.querySelector(s);
+const main = $('#main');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function allClues(m) {
+  const ids = [];
+  if (m.remetentePista) ids.push(m.remetentePista);
+  m.corpo.forEach(c => { if (c[1]) ids.push(c[1]); });
+  if (m.anexo) ids.push(m.anexo[1]);
+  return ids;
+}
+function part1Score() {
+  let dec = 0, found = 0, total = 0;
+  st.r.forEach((x, k) => { const m = M[k]; if (x.dec === m.fake) dec++; const n = allClues(m).length; total += n; found += Math.max(0, x.hits - x.wrong); });
+  const pct = Math.round(50 * dec / M.length + (total ? 50 * Math.min(found, total) / total : 0));
+  return { dec, found, total, pct };
+}
+function part2Score() {
+  let s = 0; CHECK.forEach(c => { const a = st.chk[c.id]; if (a === undefined) return; s += (a === c.o.length - 1) ? 10 : 20; });
+  return s;
+}
+function setProgress(label, frac, right) {
+  $('#progressRow').hidden = false; $('#count').textContent = label; $('#barFill').style.width = (frac * 100) + '%'; $('#pts').textContent = right || '';
+}
+
+function render() {
+  save();
+  if (st.fase === 'inicio') return renderInicio();
+  if (st.fase === 'p1') return renderMsg();
+  if (st.fase === 'p2') return renderCheck();
+  if (st.fase === 'fim') return renderFim();
+}
+
+function renderInicio() {
+  $('#progressRow').hidden = true;
+  main.innerHTML = `
+    <span class="tag">TIC · 7.º ano</span>
+    <h2>Antes de começar</h2>
+    <div class="grid3">
+      <label>O teu nome (primeiro e último)<input type="text" id="nome" autocomplete="off" value="${esc(st.nome)}"></label>
+      <label>Turma<select id="turma"><option value="">Escolhe</option>${['7.º C', '7.º D', '7.º E', '7.º G', '7.º H'].map(t => `<option ${st.turma === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label>N.º<select id="numero"><option value="">N.º</option>${Array.from({ length: 30 }, (_, i) => i + 1).map(n => `<option ${+st.numero === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    </div>
+    <p class="help">O resultado é enviado automaticamente ao professor no fim. Confirma que o número é o teu.</p>
+    <p class="help"><b>Parte 1 (8 mensagens):</b> em cada mensagem, clica nas partes que te parecem suspeitas. Depois decide se é falsa ou verdadeira. Nas verdadeiras não há nada para marcar.</p>
+    <p class="help"><b>Parte 2 (5 passos):</b> segue as instruções no teu computador e escolhe o que aparece no teu ecrã.</p>
+    <div class="row"><button class="btn" id="go">Começar a Parte 1</button></div>`;
+  $('#go').onclick = () => {
+    const n = $('#nome').value.trim(), t = $('#turma').value, nr = $('#numero').value;
+    if (!n || !t || !nr) { alert('Escreve o teu nome e escolhe a turma e o número.'); return; }
+    st.nome = n; st.turma = t; st.numero = +nr; st.fase = 'p1'; render();
+  };
+}
+
+function renderMsg() {
+  const k = st.i, m = M[k];
+  const done = st.r[k];
+  setProgress(`Mensagem ${k + 1} de ${M.length}`, k / M.length, 'Parte 1');
+  const head = m.email
+    ? `<div class="head"><div><span class="k">De:</span> ${esc(m.de)} &lt;<span class="seg" data-c="${m.remetentePista || ''}">${esc(m.email)}</span>&gt;</div><div><span class="k">Assunto:</span> ${esc(m.assunto)}</div></div>`
+    : `<div class="head"><div><span class="k">${esc(m.tipo)} de:</span> ${m.remetentePista ? `<span class="seg" data-c="${m.remetentePista}">${esc(m.de)}</span>` : esc(m.de)}</div></div>`;
+  const body = m.corpo.map(c => `<span class="seg" data-c="${c[1] || ''}">${esc(c[0])}</span>`).join('');
+  const att = m.anexo ? `<div>📎 <span class="seg attach" data-c="${m.anexo[1]}">${esc(m.anexo[0])}</span></div>` : '';
+  main.innerHTML = `
+    <span class="tag">${esc(m.tipo)}</span>
+    <p class="help">Clica nas partes suspeitas (ficam amarelas). Volta a clicar para desmarcar.</p>
+    <div class="msg ${done ? 'locked' : ''}" id="msg">${head}<div class="bodytxt">${body}</div>${att}</div>
+    <div class="row" id="act">
+      <button class="btn fake" id="bf">É falsa</button>
+      <button class="btn real" id="br">É verdadeira</button>
+    </div>
+    <div id="fbx"></div>`;
+  const segs = [...main.querySelectorAll('.seg')];
+  if (!done) segs.forEach(s => s.onclick = () => s.classList.toggle('on'));
+  const decide = fake => {
+    const marked = segs.filter(s => s.classList.contains('on'));
+    const hits = new Set(marked.filter(s => s.dataset.c).map(s => s.dataset.c)).size;
+    const wrong = marked.filter(s => !s.dataset.c).length;
+    st.r[k] = { dec: fake, hits, wrong, marked: segs.map(s => s.classList.contains('on')) };
+    showFeedback();
+  };
+  $('#bf').onclick = () => decide(true);
+  $('#br').onclick = () => decide(false);
+  if (done) showFeedback();
+
+  function showFeedback() {
+    const x = st.r[k];
+    $('#msg').classList.add('locked'); segs.forEach(s => s.onclick = null);
+    segs.forEach((s, j) => {
+      const was = x.marked[j]; s.classList.remove('on');
+      if (s.dataset.c) s.classList.add(was ? 'hit' : 'miss'); else if (was) s.classList.add('wrongmark');
+    });
+    $('#act').innerHTML = `<button class="btn" id="next">${k < M.length - 1 ? 'Próxima mensagem' : 'Ver resultado da Parte 1'}</button>`;
+    const right = x.dec === m.fake;
+    const lista = Object.entries(m.p).map(([id, t]) => `<li>${esc(t)}</li>`).join('');
+    $('#fbx').innerHTML = `
+      <div class="legend"><span class="seg hit">pista que encontraste</span><span class="seg miss">pista que faltou</span><span class="seg wrongmark">não era pista</span></div>
+      <div class="fb ${right ? 'ok' : 'bad'}">
+        <strong>${right ? 'Certo!' : 'Não é bem assim.'} Esta mensagem é ${m.fake ? 'FALSA' : 'VERDADEIRA'}.</strong>
+        ${m.fake ? `<span>Pistas:</span><ul>${lista}</ul>` : `<span>${esc(m.porque)}</span>`}
+      </div>`;
+    $('#next').onclick = () => { if (k < M.length - 1) { st.i++; } else { st.fase = 'p1fim'; } render2(); };
+  }
+}
+function render2() { if (st.fase === 'p1fim') return renderP1Fim(); render(); }
+function renderP1Fim() {
+  save();
+  const s = part1Score();
+  setProgress('Parte 1 concluída', 1, '');
+  main.innerHTML = `
+    <span class="tag">Parte 1 · resultado</span>
+    <h2>Acertaste ${s.dec} de ${M.length} mensagens</h2>
+    <p class="help">Encontraste ${Math.min(s.found, s.total)} de ${s.total} pistas (as partes marcadas por engano descontam).</p>
+    <div class="fb ok"><strong>Regras de ouro</strong><ul>
+      <li>Desconfia de pressa, ameaças e prémios bons demais.</li>
+      <li>Vê sempre quem envia: o endereço, não só o nome.</li>
+      <li>Nunca dês palavras-passe nem códigos por mensagem.</li>
+      <li>Não abras anexos nem ligações que não esperavas. Na dúvida, pergunta a um adulto.</li>
+    </ul></div>
+    <div class="row"><button class="btn" id="go">Começar a Parte 2</button></div>`;
+  $('#go').onclick = () => { st.fase = 'p2'; render(); };
+}
+
+function renderCheck() {
+  const n = CHECK.filter(c => st.chk[c.id] !== undefined).length;
+  setProgress(`Passo ${Math.min(n + 1, CHECK.length)} de ${CHECK.length}`, n / CHECK.length, 'Parte 2');
+  main.innerHTML = `
+    <span class="tag">Parte 2 · check-up do computador</span>
+    <p class="help">Faz os passos no teu computador e escolhe o que aparece. Se for o computador da sala, faz na mesma.</p>
+    ${CHECK.map((c, i) => `
+      <div class="card" style="padding:14px;background:var(--bg)">
+        <h2>${i + 1}. ${c.titulo}</h2>
+        <ol class="steps">${c.passos.map(p => `<li>${p}</li>`).join('')}</ol>
+        <p style="margin:0;font-weight:600">${c.q}</p>
+        <div class="opts">${c.o.map((o, j) => `<button class="opt ${st.chk[c.id] === j ? 'sel' : ''}" data-id="${c.id}" data-j="${j}">${o}</button>`).join('')}</div>
+      </div>`).join('')}
+    <div class="tip">Se algum passo não funcionar no teu computador, escolhe "Não consegui" e avisa o professor.</div>
+    <div class="row"><button class="btn" id="fim" ${n < CHECK.length ? 'disabled' : ''}>Ver resultado final</button></div>`;
+  main.querySelectorAll('.opt').forEach(b => b.onclick = () => { st.chk[b.dataset.id] = +b.dataset.j; const y = window.scrollY; renderCheck(); save(); window.scrollTo(0, y); });
+  $('#fim').onclick = () => { st.fase = 'fim'; render(); };
+}
+
+function renderFim() {
+  const p1 = part1Score(), p2 = part2Score();
+  const nota = Math.round(0.6 * p1.pct + 0.4 * p2);
+  setProgress('Missão concluída', 1, '');
+  const avisos = [];
+  if (st.chk.av === 1) avisos.push('O antivírus tem um aviso.');
+  if (st.chk.scan === 1) avisos.push('A análise encontrou ameaças.');
+  if (st.chk.fw === 1) avisos.push('A firewall está desligada.');
+  if (st.chk.upd === 1) avisos.push('Há atualizações por instalar: instala-as em casa.');
+  if (st.chk.apps === 1) avisos.push('Tens programas que não conheces: pergunta a um adulto antes de os desinstalar.');
+  main.innerHTML = `
+    <div class="final card" style="padding:0;background:none">
+      <span class="tag">Missão concluída</span>
+      <p class="who">${esc(st.nome)} · ${esc(st.turma)} · n.º ${esc(st.numero)}</p>
+      <p class="score">${nota}</p>
+      <p class="help">Nota da mini-tarefa de Segurança (0 a 100)</p>
+    </div>
+    <table class="sum">
+      <tr><td>Parte 1: mensagens certas</td><td>${p1.dec} / ${M.length}</td></tr>
+      <tr><td>Parte 1: pistas encontradas</td><td>${Math.min(p1.found, p1.total)} / ${p1.total}</td></tr>
+      <tr><td>Parte 1 (vale 60%)</td><td>${p1.pct}</td></tr>
+      <tr><td>Parte 2: check-up (vale 40%)</td><td>${p2}</td></tr>
+    </table>
+    ${avisos.length ? `<div class="tip"><b>Atenção ao teu computador:</b> ${avisos.join(' ')}</div>` : '<div class="fb ok"><strong>O teu computador passou no check-up.</strong></div>'}
+    <div id="sent" class="sent wait">A enviar o resultado ao professor…</div>
+    <div class="row"><button class="btn ghost" id="again">Fazer outra vez (o professor vê todas as tentativas)</button></div>`;
+  $('#again').onclick = () => { if (confirm('Queres fazer a missão outra vez? Este resultado já foi enviado ao professor.')) { st = NOVO(); render(); } };
+  enviar({ nota, p1: p1.pct, p2 });
+}
+
+async function enviar(r) {
+  const box = $('#sent');
+  if (st.enviado) { box.className = 'sent ok'; box.textContent = 'Resultado enviado ao professor ✓'; return; }
+  box.className = 'sent wait'; box.textContent = 'A enviar o resultado ao professor…';
+  const detalhes = { msgs: st.r.map((x, k) => ({ certa: x.dec === M[k].fake, pistas: x.hits, erradas: x.wrong })), check: st.chk };
+  try {
+    const res = await fetch(API + '/resultado', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ atividade: 'missao-seguranca', turma: st.turma, numero: st.numero, nome: st.nome, nota: r.nota, p1: r.p1, p2: r.p2, detalhes }) });
+    if (!res.ok) throw new Error(res.status);
+    st.enviado = true; save();
+    box.className = 'sent ok'; box.textContent = 'Resultado enviado ao professor ✓';
+  } catch (e) {
+    box.className = 'sent bad';
+    box.innerHTML = 'Não foi possível enviar o resultado. Verifica a ligação à Internet. <button class="btn" id="retry" style="margin-left:8px">Tentar de novo</button>';
+    $('#retry').onclick = () => enviar(r);
+  }
+}
+
+if (st.fase === 'p1fim') renderP1Fim(); else render();
+</script>
+</body>
+</html>
