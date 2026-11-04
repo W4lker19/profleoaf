@@ -138,9 +138,9 @@ const M = [
   { tipo: 'WhatsApp', de: '+351 9•• ••• 417 (número desconhecido)', fake: true, remetentePista: 'num',
     corpo: [['Olá! Sou eu, '], ['mudei de número', 'mud'], [' 😊 Chegou-te agora um código de 6 dígitos por SMS, foi por engano. '], ['Podes enviar-mo?', 'cod'], [' É urgente!']],
     p: { num: 'Número que não tens guardado e que não diz quem é.', mud: '"Mudei de número" é um truque comum para fingir ser alguém conhecido.', cod: 'Os códigos que chegam por SMS servem para entrar nas tuas contas. Nunca se partilham.' } },
-  { tipo: 'Mensagem no jogo', de: 'BlocoCraft Oficial', fake: true,
-    corpo: [['Parabéns! '], ['Ganhaste 5000 diamantes grátis', 'prem'], ['! Para os receberes, '], ['inicia sessão com a tua conta', 'login'], [' em '], ['blococraft-premios.net', 'link'], ['. '], ['Oferta válida durante 10 minutos', 'urg'], ['.']],
-    p: { prem: 'Prémio bom demais para ser verdade, sem teres participado em nada.', login: 'Querem os teus dados de acesso para roubar a conta.', link: 'O site não é o do jogo.', urg: 'Pressa para não teres tempo de pensar.' } },
+  { tipo: 'Rede social (mensagem direta)', de: '@marta.costa_07 (uma amiga tua)', fake: true,
+    corpo: [['Olá!! '], ['Estou num concurso e preciso muito do teu voto', 'ped'], [' 🙏 Só tens de '], ['iniciar sessão com a tua conta', 'login'], [' aqui: '], ['vota-concurso.top/marta', 'link'], ['. '], ['Acaba daqui a 1 hora!', 'urg']],
+    p: { ped: 'Contas de amigos são muitas vezes pirateadas e usadas para enviar esta mensagem a todos os contactos.', login: 'Para votar não é preciso dar a palavra-passe da tua conta noutro site.', link: 'O site não é o da rede social.', urg: 'Pressa para não teres tempo de confirmar com a amiga.' } },
   { tipo: 'Teams', de: 'Prof. de TIC · canal TIC da turma', fake: false,
     corpo: [['Bom dia! Na próxima aula precisamos do portátil carregado. '], ['Tragam também o carregador.'], [' Até segunda.']],
     p: {}, porque: 'Aparece no Teams da escola, no canal da turma, e só dá uma informação. Não pede dados, dinheiro nem cliques.' },
@@ -148,9 +148,10 @@ const M = [
     corpo: [['Caro cliente, tem uma fatura em atraso. '], ['Se não pagar hoje, terá de pagar uma multa', 'ame'], ['. Veja os detalhes no anexo.']],
     anexo: ['Fatura_2026.pdf.exe', 'exe'],
     p: { rem: 'Endereço estranho, que termina em .co em vez de um domínio conhecido.', ame: 'Ameaça de multa para te assustar.', exe: 'O anexo termina em .exe: é um programa disfarçado de PDF. Pode ser um vírus.' } },
-  { tipo: 'Email', de: 'Biblioteca Escolar', email: 'biblioteca@agvaf.edu.pt', assunto: 'Devolução de livro', fake: false,
-    corpo: [['Olá. O livro que requisitaste, "O Principezinho", deve ser devolvido até sexta-feira. '], ['Se precisares de mais tempo, passa pela biblioteca.']],
-    p: {}, porque: 'Vem da escola, fala de algo que tu fizeste (requisitaste um livro) e manda-te à biblioteca, não a um site.' },
+  { tipo: 'SMS', de: 'Conta escolar', fake: false,
+    contexto: 'Acabaste de pedir para recuperar a palavra-passe da tua conta da escola.',
+    corpo: [['O teu código de verificação é 482913. '], ['Não partilhes este código com ninguém.']],
+    p: {}, porque: 'Foste tu que pediste o código há instantes e a mensagem não tem ligações. O código serve para usares tu, no site onde o pediste; nunca se envia a outra pessoa (compara com a mensagem 4).' },
 ];
 
 const CHECK = [
@@ -167,11 +168,11 @@ const CHECK = [
     passos: ['Abre as <b>Definições</b> (Iniciar > Definições, ou Windows + I).', 'Clica em <b>Windows Update</b>.', 'Lê o estado. <b>Não reinicies o computador agora.</b>'],
     q: 'O que aparece?', o: ['Está atualizado', 'Há atualizações para instalar ou é preciso reiniciar', 'Não consegui ver'] },
   { id: 'apps', titulo: 'Programas instalados',
-    passos: ['Nas Definições, clica em <b>Aplicações</b> > <b>Aplicações instaladas</b>.', 'Percorre a lista com calma.', '<b>Não desinstales nada na aula.</b> Para desinstalar, usa-se o botão ⋯ ao lado do programa > Desinstalar, mas só com autorização de um adulto.'],
-    q: 'Encontraste algum programa que não sabes o que é?', o: ['Não, conheço todos', 'Sim, um ou mais (vou perguntar a um adulto)', 'Não consegui ver'] },
+    passos: ['Nas Definições, clica em <b>Aplicações</b> > <b>Aplicações instaladas</b>.', 'Percorre a lista com calma.', 'Para desinstalar, usa-se o botão ⋯ ao lado do programa > Desinstalar. <b>Hoje não desinstales nada:</b> o computador da Escola Digital é da escola.'],
+    q: 'Encontraste algum programa que não sabes o que é?', o: ['Não, conheço todos', 'Sim, um ou mais', 'Não consegui ver'] },
 ];
 
-const KEY = 'missao-seguranca-v1';
+const KEY = 'missao-seguranca-v2';
 const API = 'https://api.profleoaf.pt';
 const NOVO = () => ({ nome: '', turma: '', numero: '', i: 0, r: [], chk: {}, fase: 'inicio', enviado: false });
 let st = load() || NOVO();
@@ -242,6 +243,7 @@ function renderMsg() {
   const att = m.anexo ? `<div>📎 <span class="seg attach" data-c="${m.anexo[1]}">${esc(m.anexo[0])}</span></div>` : '';
   main.innerHTML = `
     <span class="tag">${esc(m.tipo)}</span>
+    ${m.contexto ? `<p style="margin:0"><b>Situação:</b> ${esc(m.contexto)}</p>` : ''}
     <p class="help">Clica nas partes suspeitas (ficam amarelas). Volta a clicar para desmarcar.</p>
     <div class="msg ${done ? 'locked' : ''}" id="msg">${head}<div class="bodytxt">${body}</div>${att}</div>
     <div class="row" id="act">
@@ -294,7 +296,7 @@ function renderP1Fim() {
       <li>Desconfia de pressa, ameaças e prémios bons demais.</li>
       <li>Vê sempre quem envia: o endereço, não só o nome.</li>
       <li>Nunca dês palavras-passe nem códigos por mensagem.</li>
-      <li>Não abras anexos nem ligações que não esperavas. Na dúvida, pergunta a um adulto.</li>
+      <li>Não abras anexos nem ligações que não esperavas. Na dúvida, confirma por outro caminho: abre tu a app ou o site oficial, ou fala com a pessoa por outro meio.</li>
     </ul></div>
     <div class="row"><button class="btn" id="go">Começar a Parte 2</button></div>`;
   $('#go').onclick = () => { st.fase = 'p2'; render(); };
@@ -328,7 +330,7 @@ function renderFim() {
   if (st.chk.scan === 1) avisos.push('A análise encontrou ameaças.');
   if (st.chk.fw === 1) avisos.push('A firewall está desligada.');
   if (st.chk.upd === 1) avisos.push('Há atualizações por instalar: instala-as em casa.');
-  if (st.chk.apps === 1) avisos.push('Tens programas que não conheces: pergunta a um adulto antes de os desinstalar.');
+  if (st.chk.apps === 1) avisos.push('Tens programas que não conheces: pesquisa o nome de cada um para saberes o que é antes de decidires se fica.');
   main.innerHTML = `
     <div class="final card" style="padding:0;background:none">
       <span class="tag">Missão concluída</span>
