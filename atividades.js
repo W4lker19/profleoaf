@@ -79,7 +79,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "tema": "Sensor, decisão e ação",
     "icone": "carro",
     "titulo": "O carro inteligente",
-    "descricao": "O carro vê um semáforo, uma passadeira, um cone ou fica sem gasolina: decide o que ele faz e escreve as regras do carro.",
+    "descricao": "Escreve as regras do carro, encontra as regras erradas e programa o semáforo para os carros e os peões.",
     "estado": "agendada",
     "disponivelEm": "2026-11-11T13:20:00.000Z"
   }

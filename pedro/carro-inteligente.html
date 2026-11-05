@@ -46,6 +46,16 @@
   .testar { font: 700 clamp(22px, 2.6vw, 32px) Arial, sans-serif; background: #9be0b4; border: 6px solid var(--ink); border-radius: 22px; padding: 14px 30px; cursor: pointer; box-shadow: 0 7px 0 rgba(27,42,57,.25); }
   .testar:disabled { opacity: .45; }
 
+  /* semáforo */
+  .slots { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; justify-content: center; }
+  .slot { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #fff; border: 5px solid var(--ink); border-radius: 20px; padding: 8px 12px; }
+  .slot.erro { border-color: #d7392b; background: #fde4e1; }
+  .slot b { font-size: 16px; color: var(--muted); }
+  .luz { width: 92px; height: 92px; border-radius: 50%; border: 6px solid var(--ink); cursor: pointer; background: #e9eef3; font: 700 34px Arial; color: #9fb1c4; display: flex; align-items: center; justify-content: center; }
+  .peaoBtn { width: 92px; height: 64px; border-radius: 14px; border: 4px solid var(--ink); cursor: pointer; background: #e9eef3; display: flex; align-items: center; justify-content: center; gap: 4px; font: 700 13px Arial; color: var(--ink); }
+  .peaoBtn svg { width: 30px; height: 40px; }
+  .seg { font-size: 34px; font-weight: 700; color: var(--muted); align-self: center; }
+  @media (max-height: 680px) { .luz { width: 70px; height: 70px; } .peaoBtn { height: 52px; } .slot { padding: 4px 8px; } }
   /* escolher carro */
   .inicio { position: fixed; inset: 0; background: rgba(244,247,251,.97); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; z-index: 10; }
   .inicio h1 { margin: 0; font-size: clamp(28px, 4vw, 44px); }
@@ -54,7 +64,7 @@
   .inicio button svg { width: 100%; height: 100%; }
   .inicio.fechado { display: none; }
 
-  @media (max-height: 680px) {
+  @media (max-height: 780px) {
     .regras { gap: 8px; } .regra { padding: 4px 8px; gap: 6px; border-width: 4px; } .regra .sensor { width: 58px; height: 58px; }
     .regra .escolha { width: 84px; height: 70px; } .regra .escolha svg { width: 36px; height: 36px; } .regra .seta { font-size: 22px; }
     .testar { padding: 8px 22px; } .zona { gap: 10px; padding: 8px 12px 10px; } .barra { padding: 4px 10px; gap: 4px; }
@@ -66,11 +76,11 @@
   @keyframes voa { from { transform: translate(0,0) scale(.4); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(1.2); opacity: 0; } }
 </style>
 </head>
-<body data-modo="decidir">
+<body data-modo="regras">
   <div class="barra" aria-label="Opções para a professora">
     <div class="contagem" id="contagem"></div>
-    <div class="grupo"><span>Atividade</span><button data-modo="decidir" aria-pressed="true">O que faz o carro?</button><button data-modo="regras" aria-pressed="false">Regras do carro</button></div>
-    <div class="grupo"><span>Nível</span><button data-nivel="1" aria-pressed="true">1</button><button data-nivel="2" aria-pressed="false">2</button><button data-nivel="3" aria-pressed="false">3</button><button data-nivel="4" aria-pressed="false">4</button></div>
+    <div class="grupo"><span>Atividade</span><button data-modo="regras" aria-pressed="true">Regras do carro</button><button data-modo="erro" aria-pressed="false">Encontra o erro</button><button data-modo="semaforo" aria-pressed="false">Programa o semáforo</button></div>
+    <div class="grupo"><span>Nível</span><button data-nivel="1" aria-pressed="true">1</button><button data-nivel="2" aria-pressed="false">2</button><button data-nivel="3" aria-pressed="false">3</button></div>
     <div class="grupo"><button id="b-som" aria-pressed="true">Som</button><button id="b-carro">Mudar carro</button><button id="b-novo">Outra</button><a href="/pedro/">← Início</a></div>
   </div>
   <div class="cena" id="cena"><div id="svg"></div><div class="pergunta" id="pergunta"></div><div class="msg" id="msg"></div></div>
@@ -91,12 +101,11 @@ const SENS = {
 };
 const ACOES = { andar: 'Andar', parar: 'Parar', contornar: 'Contornar', abastecer: 'Gasolina' };
 const NIVEL = {
-  1: { sens: ['verde', 'vermelho'], acoes: ['andar', 'parar'], eventos: 3 },
-  2: { sens: ['verde', 'vermelho', 'peao', 'livre'], acoes: ['andar', 'parar'], eventos: 4 },
-  3: { sens: ['verde', 'vermelho', 'peao', 'livre', 'cone'], acoes: ['andar', 'parar', 'contornar'], eventos: 4 },
-  4: { sens: ['verde', 'vermelho', 'peao', 'cone', 'gasolina'], acoes: ['andar', 'parar', 'contornar', 'abastecer'], eventos: 5 },
+  1: { sens: ['verde', 'vermelho', 'peao', 'cone', 'gasolina'], acoes: ['andar', 'parar', 'contornar', 'abastecer'], eventos: 5 },
+  2: { sens: ['verde', 'vermelho', 'peao', 'livre', 'cone', 'gasolina'], acoes: ['andar', 'parar', 'contornar', 'abastecer'], eventos: 6, todos: true },
+  3: { sens: ['verde', 'vermelho', 'peao', 'livre', 'cone', 'gasolina'], acoes: ['andar', 'parar', 'contornar', 'abastecer'], eventos: 7, todos: true },
 };
-const st = { modo: 'decidir', nivel: 1, som: true, cor: 'azul', ocupado: false, errou: false, ultimo: null, stats: { decidir: [0, 0], regras: [0, 0] }, regras: {}, estrada: [] };
+const st = { modo: 'regras', nivel: 1, som: true, cor: 'azul', ocupado: false, errou: false, ultimo: null, stats: { decidir: [0, 0], regras: [0, 0], erro: [0, 0], semaforo: [0, 0] }, regras: {}, estrada: [] };
 const $ = id => document.getElementById(id);
 const rnd = n => Math.floor(Math.random() * n);
 const espera = ms => new Promise(r => setTimeout(r, ms));
@@ -110,7 +119,7 @@ const carroSVG = (c, x = 0, y = 0, s = 1) => `<g transform="translate(${x},${y})
   <circle cx="32" cy="20" r="14" fill="#33404d" stroke="#1b2a39" stroke-width="5"/><circle cx="32" cy="20" r="5" fill="#c9d3dd"/></g>`;
 const semaforoSVG = (cor, x) => `<g transform="translate(${x},0)"><rect x="-5" y="120" width="10" height="72" fill="#5b6672"/>
   <rect x="-24" y="52" width="48" height="96" rx="10" fill="#1b2a39"/>
-  <circle cx="0" cy="76" r="13" fill="${cor === 'vermelho' ? '#ff3b2f' : '#4a2a28'}"/><circle cx="0" cy="100" r="9" fill="#4a4128"/><circle cx="0" cy="124" r="13" fill="${cor === 'verde' ? '#35d05a' : '#24402b'}"/></g>`;
+  <circle cx="0" cy="76" r="13" fill="${cor === 'vermelho' ? '#ff3b2f' : '#4a2a28'}"/><circle cx="0" cy="100" r="${cor === 'amarelo' ? 13 : 9}" fill="${cor === 'amarelo' ? '#ffc21a' : '#4a4128'}"/><circle cx="0" cy="124" r="13" fill="${cor === 'verde' ? '#35d05a' : '#24402b'}"/></g>`;
 const passadeiraSVG = (x, peao) => `<g transform="translate(${x},0)">${[0, 1, 2, 3, 4].map(i => `<rect x="-36" y="${196 + i * 14}" width="72" height="8" fill="#fff"/>`).join('')}
   ${peao ? `<g transform="translate(0,150)" class="peao"><circle cx="0" cy="-14" r="11" fill="#f2c894" stroke="#1b2a39" stroke-width="3"/><path d="M-12 30 l4 -34 h16 l4 34 M-10 46 l4 -16 M10 46 l-4 -16" fill="#7a4fb5" stroke="#1b2a39" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></g>` : ''}</g>`;
 const coneSVG = x => `<g transform="translate(${x},212)"><rect x="-26" y="22" width="52" height="9" rx="3" fill="#e8692c" stroke="#1b2a39" stroke-width="3"/><path d="M-14 22 L-4 -30 h8 L14 22 z" fill="#e8692c" stroke="#1b2a39" stroke-width="3" stroke-linejoin="round"/><path d="M-9 0 h18 l2 8 h-22 z" fill="#fff"/></g>`;
@@ -186,16 +195,26 @@ async function escolherAcao(a, btn) {
 // ---------- modo 2: regras do carro ----------
 function novaEstrada() {
   const L = NIVEL[st.nivel], n = L.eventos;
-  const lista = []; for (let i = 0; i < n; i++) { let s; do { s = L.sens[rnd(L.sens.length)]; } while (lista[i - 1] === s); lista.push(s); }
-  // garante que aparecem tipos diferentes
-  if (new Set(lista).size < Math.min(2, L.sens.length)) return novaEstrada();
+  let lista;
+  for (let t = 0; t < 500; t++) {
+    let base = L.todos ? L.sens.slice() : [];
+    while (base.length < n) base.push(L.sens[rnd(L.sens.length)]);
+    lista = base.sort(() => Math.random() - .5);
+    const dif = new Set(lista).size, seguidos = lista.some((x, i) => i && lista[i - 1] === x);
+    if (!seguidos && dif >= Math.min(4, L.sens.length)) break;
+  }
   st.estrada = lista; st.errou = false; st.ocupado = false; mensagem('');
   const tipos = [...new Set(lista)]; st.regras = {}; tipos.forEach(t => st.regras[t] = null);
+  if (st.modo === 'erro') {
+    tipos.forEach(t => st.regras[t] = SENS[t].certa);
+    const nErr = st.nivel === 1 ? 1 : 2, alvo = tipos.slice().sort(() => Math.random() - .5).slice(0, nErr);
+    alvo.forEach(t => { const outras = L.acoes.filter(a => a !== SENS[t].certa); st.regras[t] = outras[rnd(outras.length)]; });
+  }
   desenharEstrada(); desenharRegras(); contagem();
-  $('pergunta').textContent = 'Escolhe o que o carro faz em cada caso';
-  setTimeout(() => falar('Escolhe o que o carro faz.'), 300);
+  $('pergunta').textContent = st.modo === 'erro' ? (st.nivel === 1 ? 'Há uma regra errada. Encontra-a!' : 'Há duas regras erradas. Encontra-as!') : 'Escolhe o que o carro faz em cada caso';
+  setTimeout(() => falar(st.modo === 'erro' ? 'Há regras erradas. Encontra-as.' : 'Escolhe o que o carro faz.'), 300);
 }
-function posicoes() { const n = st.estrada.length, x0 = 230, x1 = 800; return st.estrada.map((_, i) => Math.round(x0 + (x1 - x0) * (n === 1 ? .5 : i / (n - 1)))); }
+function posicoes() { const n = st.estrada.length, x0 = 200, x1 = 830; return st.estrada.map((_, i) => Math.round(x0 + (x1 - x0) * (n === 1 ? .5 : i / (n - 1)))); }
 function desenharEstrada() {
   const xs = posicoes();
   $('svg').innerHTML = estradaBase(st.estrada.map((s, i) => eventoSVG(s, xs[i])).join('') + garagemSVG(935, st.cor));
@@ -229,15 +248,72 @@ async function testar() {
   festejar(novaEstrada);
 }
 
+// ---------- modo 3: programa o semáforo ----------
+const LUZES = ['verde', 'amarelo', 'vermelho'], SEGUINTE = { verde: 'amarelo', amarelo: 'vermelho', vermelho: 'verde' };
+const NOMELUZ = { verde: 'verde', amarelo: 'amarelo', vermelho: 'vermelho' };
+const peaoLuz = (c, x) => `<g transform="translate(${x},0)" id="pluz"><rect x="-4" y="120" width="8" height="72" fill="#5b6672"/><rect x="-18" y="72" width="36" height="62" rx="8" fill="#1b2a39"/>
+  <circle cx="0" cy="90" r="11" fill="${c === 'vermelho' ? '#ff3b2f' : '#4a2a28'}"/><circle cx="0" cy="116" r="11" fill="${c === 'verde' ? '#35d05a' : '#24402b'}"/></g>`;
+const bonecoSVG = c => `<svg viewBox="0 0 30 40"><circle cx="15" cy="7" r="5" fill="${c}"/><path d="M9 38 l3 -14 l-4 -8 h14 l-4 8 l3 14" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function novoSemaforo() {
+  st.seq = [null, null, null]; st.pseq = [null, null, null]; st.errou = false; st.ocupado = false; mensagem('');
+  desenharSemaforo(null, null); desenharSlots(); contagem();
+  $('pergunta').textContent = st.nivel === 1 ? 'Põe as cores do semáforo pela ordem certa' : 'Programa o semáforo dos carros e o dos peões';
+  setTimeout(() => falar('Programa o semáforo.'), 300);
+}
+function desenharSemaforo(cor, pcor) {
+  $('svg').innerHTML = estradaBase(passadeiraSVG(620, false) + semaforoSVG(cor || 'nenhum', 520) + (st.nivel >= 2 ? peaoLuz(pcor || 'nenhum', 720) : '') +
+    `<g id="pessoa" transform="translate(620,0)"><g transform="translate(0,150)"><circle cx="0" cy="-14" r="11" fill="#f2c894" stroke="#1b2a39" stroke-width="3"/><path d="M-12 30 l4 -34 h16 l4 34 M-10 46 l4 -16 M10 46 l-4 -16" fill="#7a4fb5" stroke="#1b2a39" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></g></g>`);
+  car.x = 90; car.y = 0; desenharCarro(); deposito(null);
+}
+function desenharSlots() {
+  const z = $('zona');
+  z.innerHTML = `<div class="slots">${st.seq.map((c, i) => `${i ? '<span class="seg">→</span>' : ''}<div class="slot" data-i="${i}"><b>${i + 1}.º</b>
+    <button class="luz" data-i="${i}" style="${c ? `background:${{ verde: '#35d05a', amarelo: '#ffc21a', vermelho: '#ff3b2f' }[c]};color:#1b2a39` : ''}" aria-label="Luz ${i + 1}">${c ? '' : '?'}</button>
+    ${st.nivel >= 2 ? `<button class="peaoBtn" data-i="${i}" aria-label="Peões ${i + 1}">${st.pseq[i] ? bonecoSVG(st.pseq[i] === 'verde' ? '#2ea043' : '#d7392b') + (st.pseq[i] === 'verde' ? 'passa' : 'espera') : 'peões ?'}</button>` : ''}</div>`).join('')}</div>
+    <button class="testar" id="b-testar">▶ Testar</button>`;
+  z.querySelectorAll('.luz').forEach(b => b.addEventListener('click', () => { if (st.ocupado) return; const i = +b.dataset.i; st.seq[i] = st.seq[i] ? LUZES[(LUZES.indexOf(st.seq[i]) + 1) % 3] : 'verde'; falar(NOMELUZ[st.seq[i]]); desenharSlots(); }));
+  z.querySelectorAll('.peaoBtn').forEach(b => b.addEventListener('click', () => { if (st.ocupado) return; const i = +b.dataset.i; st.pseq[i] = st.pseq[i] === 'verde' ? 'vermelho' : 'verde'; falar(st.pseq[i] === 'verde' ? 'Peões passam' : 'Peões esperam'); desenharSlots(); }));
+  $('b-testar').disabled = st.seq.some(c => !c) || (st.nivel >= 2 && st.pseq.some(c => !c));
+  $('b-testar').addEventListener('click', testarSemaforo);
+}
+function erroSemaforo() {
+  const sq = st.seq;
+  if (new Set(sq).size < 3) { const i = sq.findIndex((c, k) => sq.indexOf(c) !== k); return [i, 'Cada cor aparece só uma vez.']; }
+  for (let i = 1; i < 3; i++) if (sq[i] !== SEGUINTE[sq[i - 1]]) return [i, `Depois do ${NOMELUZ[sq[i - 1]]} vem o ${NOMELUZ[SEGUINTE[sq[i - 1]]]}.`];
+  if (st.nivel >= 2) for (let i = 0; i < 3; i++) {
+    if (st.pseq[i] === 'verde' && sq[i] !== 'vermelho') return [i, 'Os peões só passam quando os carros têm vermelho.'];
+    if (st.pseq[i] === 'vermelho' && sq[i] === 'vermelho') return [i, 'Com vermelho para os carros, os peões podem passar.'];
+  }
+  return null;
+}
+async function testarSemaforo() {
+  if (st.ocupado) return; st.ocupado = true; $('b-testar').disabled = true; mensagem('');
+  document.querySelectorAll('.slot').forEach(x => x.classList.remove('erro'));
+  const err = erroSemaforo(), ate = err ? err[0] : 3;
+  for (let i = 0; i < ate; i++) {
+    const c = st.seq[i]; desenharSemaforo(c, st.nivel >= 2 ? st.pseq[i] : null); document.querySelector(`.slot[data-i="${i}"]`).style.outline = '5px solid #2a5d8f';
+    if (c === 'verde') { await mover(1080, 0, 1500); }
+    else if (c === 'amarelo') { await mover(430, 0, 1500); }
+    else { car.x = 430; desenharCarro(); await espera(400); if (st.nivel >= 2 && st.pseq[i] === 'verde') { const g = document.querySelector('#pessoa g'); g.style.transform = 'translate(0px,150px)'; g.style.transition = 'transform 1.4s'; void g.getBoundingClientRect(); requestAnimationFrame(() => { g.style.transform = 'translate(0px,270px)'; }); } await espera(1500); }
+    document.querySelector(`.slot[data-i="${i}"]`).style.outline = '';
+  }
+  if (err) {
+    st.errou = true; desenharSemaforo(st.seq[err[0]], st.nivel >= 2 ? st.pseq[err[0]] : null); await abanar();
+    document.querySelector(`.slot[data-i="${err[0]}"]`).classList.add('erro'); mensagem(err[1]); falar(err[1]);
+    st.ocupado = false; $('b-testar').disabled = false; return;
+  }
+  festejar(novoSemaforo);
+}
+
 // ---------- comum ----------
-function contagem() { const s = st.stats[st.modo]; $('contagem').innerHTML = `${st.modo === 'decidir' ? 'O que faz o carro?' : 'Regras do carro'} · nível ${st.nivel}: <b>${s[0]}</b> feitas · <b>${s[1]}</b> à primeira`; }
+function contagem() { const s = st.stats[st.modo]; $('contagem').innerHTML = `${{ regras: 'Regras do carro', erro: 'Encontra o erro', semaforo: 'Programa o semáforo' }[st.modo]} · nível ${st.nivel}: <b>${s[0]}</b> feitas · <b>${s[1]}</b> à primeira`; }
 function festejar(seguinte) {
   const s = st.stats[st.modo]; s[0]++; if (!st.errou) s[1]++; contagem(); buzina();
   const f = $('festa'); f.classList.add('on'); setTimeout(() => falar('Muito bem!'), 350);
   for (let i = 0; i < 14; i++) { const e = document.createElement('span'); e.className = 'estrela'; e.textContent = '★'; e.style.color = ['#f5c518', '#2ea043', '#2b6fd7', '#d7392b'][i % 4]; e.style.setProperty('--dx', (Math.cos(i / 14 * 6.28) * 260) + 'px'); e.style.setProperty('--dy', (Math.sin(i / 14 * 6.28) * 200) + 'px'); f.appendChild(e); setTimeout(() => e.remove(), 1200); }
   setTimeout(() => { f.classList.remove('on'); seguinte(); }, 1700);
 }
-function comecar() { ajustar(); if (st.modo === 'decidir') novaDecisao(); else novaEstrada(); }
+function comecar() { if (st.modo === 'semaforo' && st.nivel > 2) { st.nivel = 2; marcar('nivel', 2); } ajustar(); if (st.modo === 'decidir') novaDecisao(); else if (st.modo === 'semaforo') novoSemaforo(); else novaEstrada(); }
 function marcar(attr, val) { document.querySelectorAll(`button[data-${attr}]`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset[attr] == val))); }
 document.querySelectorAll('button[data-modo]').forEach(b => b.addEventListener('click', () => { st.modo = b.dataset.modo; document.body.dataset.modo = st.modo; marcar('modo', st.modo); comecar(); }));
 document.querySelectorAll('button[data-nivel]').forEach(b => b.addEventListener('click', () => { st.nivel = +b.dataset.nivel; marcar('nivel', st.nivel); comecar(); }));
@@ -246,7 +322,7 @@ $('b-novo').addEventListener('click', () => { if (!st.ocupado) comecar(); });
 $('b-carro').addEventListener('click', () => $('inicio').classList.remove('fechado'));
 $('cores').innerHTML = Object.keys(COR).map(c => `<button data-cor="${c}" aria-label="Carro ${c}"><svg viewBox="-70 -45 140 80">${carroSVG(c)}</svg></button>`).join('');
 $('cores').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { st.cor = b.dataset.cor; $('inicio').classList.add('fechado'); falar('Vamos!'); comecar(); }));
-function ajustar() { const h = window.innerHeight, w = Math.min(window.innerWidth - 32, (h * (st.modo === 'regras' ? (h < 680 ? .30 : .40) : .48)) * (W / H)); $('cena').style.width = w + 'px'; $('cena').style.margin = '0 auto'; }
+function ajustar() { const h = window.innerHeight, w = Math.min(window.innerWidth - 32, (h * (st.modo !== 'decidir' ? (h < 680 ? .30 : h < 780 ? .36 : .40) : .48)) * (W / H)); $('cena').style.width = w + 'px'; $('cena').style.margin = '0 auto'; }
 window.addEventListener('resize', ajustar); ajustar();
 if ('speechSynthesis' in window) speechSynthesis.getVoices();
 comecar();
