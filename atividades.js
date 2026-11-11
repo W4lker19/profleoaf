@@ -81,7 +81,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "titulo": "O carro inteligente",
     "descricao": "Escreve as regras do carro, encontra as regras erradas e programa o semáforo para os carros e os peões.",
     "estado": "agendada",
-    "disponivelEm": "2026-11-11T13:20:00.000Z"
+    "disponivelEm": "2026-11-18T13:20:00.000Z"
   }
 ]/*ATIVIDADES-FIM*/;
 
