@@ -17,8 +17,8 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
     "icone": "seguranca",
     "titulo": "Segurança digital",
     "descricao": "Identifica os sinais de alerta em mensagens falsas e verifica a proteção do teu computador.",
-    "estado": "agendada",
-    "disponivelEm": "2026-11-17T08:00:00.000Z"
+    "estado": "oculta",
+    "disponivelEm": null
   },
   {
     "ficheiro": "conviver-na-internet.html",
