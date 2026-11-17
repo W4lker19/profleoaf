@@ -3,6 +3,12 @@
 // GET  /resultados?atividade=missao-seguranca  -> lista os resultados (precisa da palavra-passe)
 // DELETE /resultado?id=N -> apaga um registo (precisa da palavra-passe)
 // A palavra-passe é o segredo RESULTS_KEY, definido no painel do Cloudflare.
+//
+// Ferramentas (LimparBrowsers) — o instalador fica guardado no KV ligado como "FICHEIROS",
+// fora do repositório público, porque tem lá dentro o código secreto da sala:
+// PUT /tools/instalador  -> guarda o instalador (segredo TOOLS_UPLOAD_KEY; usado pelo Painel do Professor)
+// GET /tools/info        -> versão e data do instalador (palavra-passe TOOLS_KEY)
+// GET /tools/instalador  -> descarrega o instalador (palavra-passe TOOLS_KEY)
 
 const ORIGENS = ['https://profleoaf.pt', 'https://www.profleoaf.pt'];
 const ATIVIDADES = ['missao-seguranca'];
@@ -14,29 +20,63 @@ function cors(req) {
   const o = req.headers.get('Origin') || '';
   return {
     'Access-Control-Allow-Origin': ORIGENS.includes(o) ? o : ORIGENS[0],
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Vary': 'Origin',
   };
 }
 const json = (req, data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...cors(req) } });
 
-async function autorizado(req, env) {
+async function autorizado(req, env, segredo = 'RESULTS_KEY') {
   const h = req.headers.get('Authorization') || '';
   const dado = h.startsWith('Bearer ') ? h.slice(7) : '';
-  if (!env.RESULTS_KEY || !dado) return false;
+  if (!env[segredo] || !dado) return false;
   const enc = new TextEncoder();
-  const [a, b] = await Promise.all([crypto.subtle.digest('SHA-256', enc.encode(dado)), crypto.subtle.digest('SHA-256', enc.encode(env.RESULTS_KEY))]);
+  const [a, b] = await Promise.all([crypto.subtle.digest('SHA-256', enc.encode(dado)), crypto.subtle.digest('SHA-256', enc.encode(env[segredo]))]);
   const x = new Uint8Array(a), y = new Uint8Array(b);
   let d = 0; for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
   return d === 0;
 }
 const inteiro = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+const MAX_INSTALADOR = 25 * 1024 * 1024; // limite de um valor no KV
+const espera = ms => new Promise(r => setTimeout(r, ms)); // atrasa tentativas de adivinhar a palavra-passe
+
+async function ferramentas(req, env, url) {
+  if (!env.FICHEIROS) return json(req, { erro: 'Falta ligar o KV "FICHEIROS" a este Worker no Cloudflare.' }, 500);
+
+  if (url.pathname === '/tools/instalador' && req.method === 'PUT') {
+    if (!(await autorizado(req, env, 'TOOLS_UPLOAD_KEY'))) { await espera(800); return json(req, { erro: 'Chave de envio errada' }, 401); }
+    const dados = await req.arrayBuffer();
+    const b = new Uint8Array(dados);
+    if (dados.byteLength < 1024 || dados.byteLength > MAX_INSTALADOR || b[0] !== 0x4d || b[1] !== 0x5a) {
+      return json(req, { erro: 'Ficheiro inválido (tem de ser o instalador .exe, até 25 MB)' }, 400);
+    }
+    const versao = String(req.headers.get('X-Versao') || '').replace(/[^0-9A-Za-z.\-]/g, '').slice(0, 40);
+    const info = { versao, data: new Date().toISOString(), tamanho: dados.byteLength };
+    await env.FICHEIROS.put('instalador', dados, { metadata: info });
+    return json(req, { ok: true, ...info });
+  }
+
+  if ((url.pathname === '/tools/info' || url.pathname === '/tools/instalador') && req.method === 'GET') {
+    if (!(await autorizado(req, env, 'TOOLS_KEY'))) { await espera(800); return json(req, { erro: 'Palavra-passe errada' }, 401); }
+    const { value, metadata } = await env.FICHEIROS.getWithMetadata('instalador', 'arrayBuffer');
+    if (!value) return json(req, { erro: 'Ainda não foi publicado nenhum instalador.' }, 404);
+    if (url.pathname === '/tools/info') return json(req, metadata || {});
+    return new Response(value, { headers: {
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': 'attachment; filename="Instalar LimparBrowsers.exe"',
+      'Cache-Control': 'no-store',
+      ...cors(req),
+    } });
+  }
+  return json(req, { erro: 'Não encontrado' }, 404);
+}
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
+    if (url.pathname.startsWith('/tools/')) return ferramentas(req, env, url);
     await env.DB.exec(SQL_TABELA);
 
     if (url.pathname === '/resultado' && req.method === 'POST') {
