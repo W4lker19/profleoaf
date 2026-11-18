@@ -101,20 +101,18 @@ $('form').addEventListener('submit', async (e) => {
     if (!ri.ok) { mostrar('bad', 'Erro no servidor: ' + ((await ri.json().catch(() => ({}))).erro || ri.status)); return; }
     const info = await ri.json();
 
-    const r = await fetch(API + '/instalador', { headers: cab, cache: 'no-store' });
-    if (!r.ok) { mostrar('bad', 'Não foi possível descarregar (' + r.status + ').'); return; }
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'Instalar LimparBrowsers.exe';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    // Link temporário (2 minutos) para o browser fazer uma descarga normal, com barra de progresso
+    const rl = await fetch(API + '/link', { method: 'POST', headers: cab, cache: 'no-store' });
+    if (!rl.ok) { mostrar('bad', 'Não foi possível preparar a descarga (' + rl.status + ').'); return; }
+    const { url } = await rl.json();
+    window.location.href = url;
 
     const data = info.data ? new Date(info.data).toLocaleString('pt-PT') : '';
     $('info').textContent = 'Versão ' + (info.versao || '?') + (data ? ', publicada a ' + data : '') +
-      ' (' + Math.round((info.tamanho || blob.size) / 1048576 * 10) / 10 + ' MB).';
+      ' (' + Math.round((info.tamanho || 0) / 1048576 * 10) / 10 + ' MB).';
     $('info').hidden = false;
-    mostrar('ok', 'Descarregado. Siga os passos abaixo.');
+    mostrar('ok', 'A descarga começou: veja a barra de transferências do browser (pode demorar um pouco). ' +
+      'Se lá aparecer "Falhou" ou "Bloqueado", a rede da escola está a bloquear ficheiros .exe.');
   } catch (err) {
     mostrar('bad', 'Sem ligação ao servidor. Verifique a internet e tente outra vez.');
   } finally {

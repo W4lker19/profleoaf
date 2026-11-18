@@ -6,6 +6,9 @@
 // PUT /instalador  -> guarda o instalador (segredo TOOLS_UPLOAD_KEY; usado pelo Painel do Professor)
 // GET /info        -> versão e data do instalador (palavra-passe TOOLS_KEY)
 // GET /instalador  -> descarrega o instalador (palavra-passe TOOLS_KEY)
+// POST /link       -> devolve um link de descarga válido 2 minutos (palavra-passe TOOLS_KEY),
+//                     para o browser fazer uma descarga normal, com barra de progresso
+// GET /instalador?t=... -> descarga com esse link temporário
 // Os segredos TOOLS_UPLOAD_KEY e TOOLS_KEY definem-se no painel do Cloudflare.
 
 const ORIGENS = ['https://profleoaf.pt', 'https://www.profleoaf.pt'];
@@ -15,7 +18,7 @@ function cors(req) {
   const o = req.headers.get('Origin') || '';
   return {
     'Access-Control-Allow-Origin': ORIGENS.includes(o) ? o : ORIGENS[0],
-    'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Versao',
     'Vary': 'Origin',
   };
@@ -31,6 +34,26 @@ async function autorizado(req, env, segredo) {
   const [a, b] = await Promise.all([crypto.subtle.digest('SHA-256', enc.encode(dado)), crypto.subtle.digest('SHA-256', enc.encode(env[segredo]))]);
   const x = new Uint8Array(a), y = new Uint8Array(b);
   let d = 0; for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
+  return d === 0;
+}
+
+const VALIDADE_LINK = 120; // segundos
+const b64url = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+async function assinarLink(env, expira) {
+  const chave = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.TOOLS_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return b64url(await crypto.subtle.sign('HMAC', chave, new TextEncoder().encode('instalador|' + expira)));
+}
+
+// Link temporário: "<expira>.<assinatura>", assinado com a palavra-passe TOOLS_KEY
+async function linkValido(env, t) {
+  if (!env.TOOLS_KEY || typeof t !== 'string') return false;
+  const [exp, assin] = t.split('.');
+  const expira = Number(exp);
+  if (!Number.isInteger(expira) || expira < Date.now() / 1000 || expira > Date.now() / 1000 + VALIDADE_LINK + 5 || !assin) return false;
+  const certa = await assinarLink(env, expira);
+  if (certa.length !== assin.length) return false;
+  let d = 0; for (let i = 0; i < certa.length; i++) d |= certa.charCodeAt(i) ^ assin.charCodeAt(i);
   return d === 0;
 }
 
@@ -53,8 +76,20 @@ export default {
       return json(req, { ok: true, ...info });
     }
 
-    if ((url.pathname === '/info' || url.pathname === '/instalador') && req.method === 'GET') {
+    if (url.pathname === '/link' && req.method === 'POST') {
       if (!(await autorizado(req, env, 'TOOLS_KEY'))) { await espera(800); return json(req, { erro: 'Palavra-passe errada' }, 401); }
+      const expira = Math.floor(Date.now() / 1000) + VALIDADE_LINK;
+      return json(req, { url: url.origin + '/instalador?t=' + expira + '.' + (await assinarLink(env, expira)), validade: VALIDADE_LINK });
+    }
+
+    if ((url.pathname === '/info' || url.pathname === '/instalador') && req.method === 'GET') {
+      const comLink = url.pathname === '/instalador' && url.searchParams.has('t');
+      const ok = comLink ? await linkValido(env, url.searchParams.get('t')) : await autorizado(req, env, 'TOOLS_KEY');
+      if (!ok) {
+        await espera(800);
+        if (comLink) return new Response('Link expirado ou inválido. Volte a profleoaf.pt/tools e descarregue outra vez.', { status: 401, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+        return json(req, { erro: 'Palavra-passe errada' }, 401);
+      }
       const { value, metadata } = await env.FICHEIROS.getWithMetadata('instalador', 'arrayBuffer');
       if (!value) return json(req, { erro: 'Ainda não foi publicado nenhum instalador.' }, 404);
       if (url.pathname === '/info') return json(req, metadata || {});
