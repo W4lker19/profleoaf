@@ -65,6 +65,10 @@ tr.falta td { color: var(--muted); }
 .muted { color: var(--muted); font-size: .9rem; }
 .stats { display: flex; flex-wrap: wrap; gap: 16px; font-size: .95rem; }
 .stats b { font-family: var(--display); font-size: 1.3rem; }
+input.d { width: 2.2em; text-align: center; padding: 5px 2px; font-variant-numeric: tabular-nums; }
+input.d.err { border-color: var(--bad); background: var(--bad-bg); }
+input.t { width: 100%; min-width: 160px; padding: 5px 7px; font-size: .9rem; }
+tr.feita td:first-child { box-shadow: inset 4px 0 var(--ok); }
 code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .95rem; }
 </style>
 </head>
@@ -113,6 +117,7 @@ code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .
     <div class="row">
       <button class="btn" id="copiar">Copiar níveis para o Excel</button>
       <button class="btn ghost" id="csvTurma">Descarregar CSV desta turma</button>
+      <button class="btn ghost" id="papel">Lançar fichas em papel</button>
     </div>
     <div id="pMsg" class="msg" hidden></div>
     <p class="muted">"Copiar níveis" copia uma linha por número (1, 2, 3…), com linhas vazias para quem não respondeu ou foi transferido. Cola na coluna Autoavaliação, na linha do n.º 1.</p>
@@ -121,6 +126,22 @@ code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .
       <tbody id="linhas"></tbody>
     </table></div>
     <p class="muted">Afirmações: 1 tarefas e prazos · 2 matéria · 3 trabalho com o par · 4 atenção e participação · 5 respeito · 6 uso seguro e responsável.</p>
+  </section>
+
+  <section class="card" id="secPapel" hidden>
+    <div class="row" style="justify-content: space-between; align-items: center;">
+      <h2>Fichas em papel <span class="muted" id="papelT"></span></h2>
+      <button class="btn ghost" id="fecharPapel">Fechar</button>
+    </div>
+    <p class="muted">Escreve um algarismo de 1 a 5 em cada casa: o cursor salta sozinho para a seguinte. Linhas vazias não são guardadas. Os "porquê" e "melhorar" são opcionais. A autoavaliação tem de estar aberta para guardar.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="n">N.º</th><th>Nome</th><th class="n">1</th><th class="n">2</th><th class="n">3</th><th class="n">4</th><th class="n">5</th><th class="n">6</th><th class="n">Nível</th><th>Porquê</th><th>Vou melhorar</th></tr></thead>
+      <tbody id="papelLinhas"></tbody>
+    </table></div>
+    <div class="row">
+      <button class="btn" id="guardarPapel">Guardar fichas</button>
+    </div>
+    <div id="papelMsg" class="msg" hidden></div>
   </section>
 </div>
 
@@ -253,6 +274,67 @@ $('copiar').onclick = async () => {
 };
 $('csvTurma').onclick = () => turmaAtual && csv([turmaAtual]);
 $('csvTodas').onclick = () => csv(Object.keys(cfg.turmas || {}).sort());
+// ---------- Lançar fichas em papel ----------
+function abrirPapel() {
+  if (!turmaAtual) return;
+  const L = linhasTurma(turmaAtual).filter(l => l.ativo);
+  $('papelT').textContent = '· ' + turmaAtual;
+  $('papelLinhas').innerHTML = L.map(l => {
+    const r = l.r, v = i => r ? r.itens[i] : '';
+    return '<tr data-n="' + l.n + '"' + (r ? ' class="feita"' : '') + '><td class="n">' + l.n + '</td><td>' + esc(l.nome) + '</td>' +
+      [0, 1, 2, 3, 4, 5].map(i => '<td class="n"><input class="d" inputmode="numeric" maxlength="1" value="' + v(i) + '"></td>').join('') +
+      '<td class="n"><input class="d nv" inputmode="numeric" maxlength="1" value="' + (r ? r.nivel : '') + '"></td>' +
+      '<td><input class="t pq" maxlength="400" value="' + esc(r ? r.porque : '') + '"></td><td><input class="t ml" maxlength="400" value="' + esc(r ? r.melhorar : '') + '"></td></tr>';
+  }).join('');
+  const ds = [...$('papelLinhas').querySelectorAll('input.d')];
+  ds.forEach((inp, k) => {
+    inp.addEventListener('focus', () => inp.select());
+    inp.addEventListener('input', () => {
+      inp.value = inp.value.replace(/[^1-5]/g, '').slice(-1);
+      inp.classList.remove('err');
+      if (inp.value && ds[k + 1]) ds[k + 1].focus();
+    });
+    inp.addEventListener('keydown', e => { if (e.key === 'Backspace' && !inp.value && ds[k - 1]) { e.preventDefault(); ds[k - 1].focus(); ds[k - 1].value = ''; } });
+  });
+  msg($('papelMsg'), '', '');
+  $('secPapel').hidden = false;
+  $('secPapel').scrollIntoView({ behavior: 'smooth' });
+  if (ds[0]) ds[0].focus();
+}
+async function guardarPapel() {
+  const t = turmaAtual, cod = cfg.turmas[t].codigo;
+  const linhas = [...$('papelLinhas').querySelectorAll('tr')];
+  const envios = [], incompletas = [];
+  for (const tr of linhas) {
+    const ds = [...tr.querySelectorAll('input.d')];
+    const vals = ds.map(i => i.value);
+    if (vals.every(v => !v)) continue;
+    if (vals.some(v => !v)) { ds.forEach(i => { if (!i.value) i.classList.add('err'); }); incompletas.push(tr.dataset.n); continue; }
+    const n = +tr.dataset.n, ant = respostas.find(x => x.turma === t && x.numero === n);
+    const itens = vals.slice(0, 6).map(Number), nivel = +vals[6];
+    const porque = tr.querySelector('.pq').value.trim(), melhorar = tr.querySelector('.ml').value.trim();
+    if (ant && ant.nivel === nivel && ant.itens.join() === itens.join() && (ant.porque || '') === porque && (ant.melhorar || '') === melhorar) continue;
+    envios.push({ tr, corpo: { turma: t, codigo: cod, numero: n, itens, nivel, porque, melhorar } });
+  }
+  if (incompletas.length) return msg($('papelMsg'), 'bad', 'Faltam casas nos n.º ' + incompletas.join(', ') + ' (marcadas a vermelho). Nada foi guardado.');
+  if (!envios.length) return msg($('papelMsg'), 'info', 'Não há fichas novas ou alteradas para guardar.');
+  msg($('papelMsg'), 'info', 'A guardar ' + envios.length + ' fichas…');
+  let ok = 0; const falhas = [];
+  for (const e of envios) {
+    try {
+      const r = await fetch(API + '/auto/resposta', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(e.corpo) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.erro || ('Erro ' + r.status));
+      ok++; e.tr.classList.add('feita');
+    } catch (err) { falhas.push(e.corpo.numero + ' (' + err.message + ')'); }
+  }
+  await carregar().catch(() => {});
+  $('papelT').textContent = '· ' + t;
+  msg($('papelMsg'), falhas.length ? 'bad' : 'ok', ok + ' fichas guardadas.' + (falhas.length ? ' Falharam: ' + falhas.join(', ') : ''));
+}
+$('papel').onclick = abrirPapel;
+$('fecharPapel').onclick = () => { $('secPapel').hidden = true; };
+$('guardarPapel').onclick = guardarPapel;
 </script>
 </body>
 </html>
