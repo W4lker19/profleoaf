@@ -1,13 +1,15 @@
 <# : -------- parte em linha de comandos (cmd): pede administrador e passa o resto ao PowerShell --------
 @echo off
 chcp 65001 >nul
-net session >nul 2>&1
-if errorlevel 1 (
+set "OTIMIZAR_F=%~f0"
+fltmc >nul 2>&1
+if %errorlevel% neq 0 (
+  if "%~1"=="elevado" ( echo Sem permissoes de administrador. & pause & exit /b )
   echo A pedir permissoes de administrador...
-  powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+  powershell -NoProfile -Command "Start-Process -FilePath $env:OTIMIZAR_F -ArgumentList 'elevado' -Verb RunAs"
   exit /b
 )
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='%~f0'; iex ([IO.File]::ReadAllText($f, [Text.Encoding]::UTF8))"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$f=$env:OTIMIZAR_F; iex ([IO.File]::ReadAllText($f, [Text.Encoding]::UTF8))"
 exit /b
 #>
 
@@ -26,9 +28,12 @@ exit /b
 #   4. Desliga telemetria, sugestões, anúncios, widgets e aplicações em segundo plano
 #   5. Desliga efeitos visuais (animações, transparências) em todas as contas
 #   6. Ativa o Sensor de Armazenamento, que limpa sozinho daqui para a frente
+#   7. Instala as aplicações das aulas de TIC e CEA (Scratch, GIMP, Audacity,
+#      VLC, 7-Zip) e põe atalhos para o MakeCode (micro:bit) e o Microsoft 365
 #
 #  NÃO mexe em: Windows Update, Windows Defender, Microsoft Store, Office,
 #  Teams, OneDrive, nem nas pastas Documentos/Imagens dos alunos.
+#  Pode ser corrido mais do que uma vez: só instala o que faltar.
 #  Registo de tudo o que foi feito em C:\ProgramData\OtimizarPortatil\
 # =============================================================================
 
@@ -66,20 +71,35 @@ $AppsRemover = @(
   'Microsoft.Microsoft3DViewer', 'Microsoft.3DBuilder', 'Microsoft.Wallet',
   'Microsoft.Xbox.TCUI', 'Microsoft.XboxApp', 'Microsoft.XboxGameOverlay', 'Microsoft.XboxGamingOverlay',
   'Microsoft.XboxSpeechToTextOverlay', 'Microsoft.XboxIdentityProvider', 'Microsoft.GamingApp',
-  'Microsoft.YourPhone', 'Microsoft.ZuneMusic', 'Microsoft.ZuneVideo',
+  'Microsoft.YourPhone', 'Microsoft.ZuneVideo',
   'Microsoft.549981C3F5F10', 'Microsoft.PowerAutomateDesktop', 'Microsoft.Todos',
   'Microsoft.Windows.DevHome', 'Microsoft.Copilot', 'Microsoft.BingSearch',
-  'Clipchamp.Clipchamp', 'MicrosoftCorporationII.MicrosoftFamily',
+  'MicrosoftCorporationII.MicrosoftFamily',
   '*CandyCrush*', '*BubbleWitch*', '*MarchofEmpires*', '*Disney*', '*Spotify*', '*TikTok*',
   '*Instagram*', '*Facebook*', '*Netflix*', '*Twitter*', '*ROBLOX*', '*Hulu*', '*PrimeVideo*',
-  '*king.com*', '*Dolby*', '*Asphalt*', '*McAfee*', '*Norton*'
+  '*king.com*', '*Asphalt*', '*McAfee*', '*Norton*'
+)
+# Mantidas de propósito: Leitor Multimédia (ZuneMusic), Clipchamp (M365 Educação),
+# Dolby (som dos altifalantes) e Obter Ajuda (resolução de problemas do Windows 11).
+
+# Aplicações para as aulas (identificadores do winget). Só instala as que faltarem.
+$AppsInstalar = @(
+  @('MITMediaLab.Scratch.3', 'Scratch 3'),
+  @('GIMP.GIMP.3',           'GIMP'),
+  @('Audacity.Audacity',     'Audacity'),
+  @('VideoLAN.VLC',          'VLC'),
+  @('7zip.7zip',             '7-Zip')
+)
+
+# Atalhos na Área de Trabalho de todas as contas: "Nome|Endereço"
+$AtalhosWeb = @(
+  'MakeCode micro:bit|https://makecode.microbit.org/',
+  'Microsoft 365|https://www.office.com/'
 )
 
 # Serviços a desligar
 $ServicosDesligar = @(
   'DiagTrack',            # telemetria
-  'dmwappushservice',     # telemetria (mensagens WAP)
-  'WSearch',              # indexação de ficheiros: pesa muito em discos lentos
   'MapsBroker',           # mapas offline
   'RetailDemo',           # modo de demonstração de loja
   'XblAuthManager', 'XblGameSave', 'XboxNetApiSvc', 'XboxGipSvc',  # Xbox
@@ -89,7 +109,6 @@ $ServicosDesligar = @(
 
 # Tarefas agendadas de telemetria
 $TarefasDesligar = @(
-  @('\Microsoft\Windows\Application Experience\', 'Microsoft Compatibility Appraiser'),
   @('\Microsoft\Windows\Application Experience\', 'ProgramDataUpdater'),
   @('\Microsoft\Windows\Customer Experience Improvement Program\', 'Consolidator'),
   @('\Microsoft\Windows\Customer Experience Improvement Program\', 'UsbCeip'),
@@ -123,23 +142,58 @@ function Tamanho($bytes) {
 
 function EspacoLivre { return (Get-PSDrive -Name ($env:SystemDrive.TrimEnd(':'))).Free }
 
+# SEGURANÇA: nenhuma função abaixo entra em junções ou ligações simbólicas
+# (pastas que "apontam" para outro sítio, p. ex. para os Documentos).
+# Uma ligação é apagada como ligação; o destino nunca é tocado.
+function E-Ligacao($item) { return [bool]($item.Attributes -band [IO.FileAttributes]::ReparsePoint) }
+
+# Lista os ficheiros de uma pasta e subpastas, sem entrar em ligações
+function Listar-Ficheiros([string]$pasta) {
+  Get-ChildItem -LiteralPath $pasta -Force -ErrorAction SilentlyContinue | ForEach-Object {
+    if (E-Ligacao $_) { return }
+    if ($_.PSIsContainer) { Listar-Ficheiros $_.FullName } else { $_ }
+  }
+}
+
+# Apaga um ficheiro ou uma pasta (com tudo o que tem dentro) sem seguir ligações e
+# devolve os bytes apagados. Ficheiros em uso são saltados (sem perguntas nem erros).
+function Apagar-Item($i) {
+  if (E-Ligacao $i) {
+    try { if ($i.PSIsContainer) { [IO.Directory]::Delete($i.FullName, $false) } else { [IO.File]::Delete($i.FullName) } } catch {}
+    return [long]0
+  }
+  if ($i.PSIsContainer) {
+    [long]$s = 0
+    foreach ($c in @(Get-ChildItem -LiteralPath $i.FullName -Force -ErrorAction SilentlyContinue)) { $s += Apagar-Item $c }
+    try { $i.Attributes = 'Directory'; [IO.Directory]::Delete($i.FullName, $false) } catch {}   # só apaga se tiver ficado vazia
+    return $s
+  }
+  try { $len = [long]$i.Length; $i.Attributes = 'Normal'; [IO.File]::Delete($i.FullName); return $len } catch { return [long]0 }
+}
+
+# Apaga as subpastas vazias (sem entrar em ligações)
+function Apagar-PastasVazias([string]$pasta) {
+  Get-ChildItem -LiteralPath $pasta -Force -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+    if (E-Ligacao $_) { return }
+    Apagar-PastasVazias $_.FullName
+    try { [IO.Directory]::Delete($_.FullName, $false) } catch {}
+  }
+}
+
 # Apaga o conteúdo de uma pasta (mas não a pasta) e devolve os bytes apagados
 function Limpar-Pasta([string]$pasta) {
-  if (-not (Test-Path -LiteralPath $pasta)) { return 0 }
-  $bytes = (Get-ChildItem -LiteralPath $pasta -Recurse -Force -File -ErrorAction SilentlyContinue |
-            Measure-Object -Property Length -Sum).Sum
-  Get-ChildItem -LiteralPath $pasta -Force -ErrorAction SilentlyContinue |
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-  if ($bytes) { return $bytes } else { return 0 }
+  $r = Get-Item -LiteralPath $pasta -Force -ErrorAction SilentlyContinue
+  if (-not $r -or (E-Ligacao $r)) { return [long]0 }
+  [long]$s = 0
+  foreach ($c in @(Get-ChildItem -LiteralPath $pasta -Force -ErrorAction SilentlyContinue)) { $s += Apagar-Item $c }
+  return $s
 }
 
 # Apaga uma pasta inteira e devolve os bytes apagados
 function Apagar-Pasta([string]$pasta) {
-  if (-not (Test-Path -LiteralPath $pasta)) { return 0 }
-  $bytes = (Get-ChildItem -LiteralPath $pasta -Recurse -Force -File -ErrorAction SilentlyContinue |
-            Measure-Object -Property Length -Sum).Sum
-  Remove-Item -LiteralPath $pasta -Recurse -Force -ErrorAction SilentlyContinue
-  if ($bytes) { return $bytes } else { return 0 }
+  $r = Get-Item -LiteralPath $pasta -Force -ErrorAction SilentlyContinue
+  if (-not $r) { return [long]0 }
+  return (Apagar-Item $r)
 }
 
 # Escreve um valor no registo (cria a chave se for preciso)
@@ -187,11 +241,16 @@ Write-Host '  - Instaladores, jogos e arquivos (.exe, .zip, .rar, .iso…) nas T
 Write-Host '  - Instaladores (.exe, .msi, .iso) na Área de Trabalho'
 Write-Host '  - Jogos instalados pelos alunos (Roblox, Minecraft/TLauncher, Discord…)'
 Write-Host '  - Ficheiros temporários, cache dos browsers e Reciclagem'
+Write-Host '  Os ficheiros são apagados de vez (não vão para a Reciclagem).' -ForegroundColor Yellow
+Write-Host ''
+Write-Host "Daqui para a frente, o Windows apaga sozinho, em todas as contas, o que estiver"
+Write-Host "nas Transferências há mais de $DiasLimpezaAutomatica dias."
 Write-Host ''
 Write-Host 'Os Documentos, Imagens e o OneDrive dos alunos NÃO são tocados.' -ForegroundColor Green
 if ($ContasExcluidas.Count -gt 0) { Write-Host ('Contas excluídas: ' + ($ContasExcluidas -join ', ')) -ForegroundColor Green }
 Write-Host ''
-Write-Host 'Os browsers vão ser fechados. Pode demorar entre 5 e 40 minutos.'
+Write-Host 'Também instala Scratch, GIMP, Audacity, VLC e 7-Zip (precisa de internet).'
+Write-Host 'Os browsers vão ser fechados. Pode demorar entre 10 e 60 minutos.'
 Write-Host ''
 
 if ($PedirConfirmacao) {
@@ -201,6 +260,7 @@ if ($PedirConfirmacao) {
 
 $Inicio = Get-Date
 $LivreAntes = EspacoLivre
+$ReiniciarObrigatorio = $false
 
 # Ponto de restauro (só se o Restauro do Sistema já estiver ligado)
 Passo 'A criar ponto de restauro'
@@ -214,7 +274,7 @@ try {
 
 # ----------------------------- 1. FICHEIROS DOS ALUNOS -----------------------
 
-Passo '1/6 A limpar os ficheiros das contas'
+Passo '1/7 A limpar os ficheiros das contas'
 
 Stop-Process -Name chrome, msedge, firefox, opera, brave, Roblox*, Discord -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
@@ -248,27 +308,25 @@ foreach ($p in $Perfis) {
 
   # Transferências: antigas + instaladores/jogos/arquivos
   $dl = Join-Path $casa 'Downloads'
-  if (Test-Path -LiteralPath $dl) {
-    $ficheiros = Get-ChildItem -LiteralPath $dl -Recurse -Force -File -ErrorAction SilentlyContinue |
-      Where-Object { $_.LastWriteTime -lt $Limite -or $ExtensoesTransferencias -contains $_.Extension.ToLower() }
-    foreach ($f in $ficheiros) {
-      $t = $f.Length
-      Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
-      if (-not (Test-Path -LiteralPath $f.FullName)) { $apagado += $t }
+  if ((Test-Path -LiteralPath $dl) -and -not (E-Ligacao (Get-Item -LiteralPath $dl -Force))) {
+    $ficheiros = Listar-Ficheiros $dl |
+      Where-Object { $_.FullName -ne $f -and ($_.LastWriteTime -lt $Limite -or $ExtensoesTransferencias -contains $_.Extension.ToLower()) }
+    foreach ($fi in $ficheiros) {
+      $t = $fi.Length
+      try { $fi.Attributes = 'Normal'; [IO.File]::Delete($fi.FullName); $apagado += $t } catch {}
     }
-    # Pastas que ficaram vazias
-    Get-ChildItem -LiteralPath $dl -Recurse -Force -Directory -ErrorAction SilentlyContinue |
-      Sort-Object { $_.FullName.Length } -Descending |
-      Where-Object { -not (Get-ChildItem -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue) } |
-      Remove-Item -Force -ErrorAction SilentlyContinue
+    Apagar-PastasVazias $dl
   }
 
-  # Área de Trabalho: só instaladores e imagens de disco
+  # Área de Trabalho: só instaladores e imagens de disco (nunca este próprio script)
   $ad = Join-Path $casa 'Desktop'
-  if (Test-Path -LiteralPath $ad) {
+  if ((Test-Path -LiteralPath $ad) -and -not (E-Ligacao (Get-Item -LiteralPath $ad -Force))) {
     Get-ChildItem -LiteralPath $ad -Force -File -ErrorAction SilentlyContinue |
-      Where-Object { $ExtensoesAreaTrabalho -contains $_.Extension.ToLower() } |
-      ForEach-Object { $apagado += $_.Length; Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
+      Where-Object { $_.FullName -ne $f -and -not (E-Ligacao $_) -and $ExtensoesAreaTrabalho -contains $_.Extension.ToLower() } |
+      ForEach-Object {
+        $t = $_.Length
+        try { $_.Attributes = 'Normal'; [IO.File]::Delete($_.FullName); $apagado += $t } catch {}
+      }
   }
 
   # Jogos e programas instalados na conta
@@ -284,6 +342,7 @@ foreach ($p in $Perfis) {
   $apagado += Limpar-Pasta (Join-Path $casa 'AppData\Local\Temp')
   foreach ($c in $CachesBrowsers) {
     Get-Item -Path (Join-Path $casa $c) -Force -ErrorAction SilentlyContinue |
+      Where-Object { -not (E-Ligacao $_) } |
       ForEach-Object { $apagado += Limpar-Pasta $_.FullName }
   }
 
@@ -303,7 +362,7 @@ Ok "Reciclagem esvaziada ($(Tamanho $bytesRb))"
 
 # ----------------------------- 2. SISTEMA ------------------------------------
 
-Passo '2/6 A limpar o sistema'
+Passo '2/7 A limpar o sistema'
 
 $b = Limpar-Pasta (Join-Path $env:windir 'Temp')
 Ok "Temporários do Windows ($(Tamanho $b))"
@@ -324,19 +383,24 @@ if (Get-Command Delete-DeliveryOptimizationCache -ErrorAction SilentlyContinue) 
 
 if ($LimpezaProfunda) {
   Write-Host '    A limpar componentes antigos do Windows (pode demorar 10-30 min, não feche a janela)...'
-  Start-Process -FilePath dism.exe -ArgumentList '/Online', '/Cleanup-Image', '/StartComponentCleanup' -Wait -NoNewWindow
-  Ok 'Componentes antigos do Windows removidos'
+  & dism.exe /Online /Cleanup-Image /StartComponentCleanup /NoRestart
+  if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 3010) { Ok 'Componentes antigos do Windows removidos' }
+  else { Aviso "A limpeza de componentes não terminou (código $LASTEXITCODE). Normalmente é por haver uma atualização à espera de reinício; volte a correr depois de reiniciar." }
 }
 
 # ----------------------------- 3. APLICAÇÕES ---------------------------------
 
-Passo '3/6 A remover aplicações desnecessárias'
+Passo '3/7 A remover aplicações desnecessárias'
 
 $Provisionadas = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
 foreach ($a in $AppsRemover) {
   $removida = $false
-  Get-AppxPackage -AllUsers -Name $a -ErrorAction SilentlyContinue | ForEach-Object {
-    try { Remove-AppxPackage -Package $_.PackageFullName -AllUsers -ErrorAction Stop; $removida = $true } catch {}
+  # Aplicações em "pacote" (bundle) têm de ser removidas pelo pacote, não pela parte principal
+  $pacotes = @(Get-AppxPackage -AllUsers -PackageTypeFilter Bundle -Name $a -ErrorAction SilentlyContinue)
+  if ($pacotes.Count -eq 0) { $pacotes = @(Get-AppxPackage -AllUsers -Name $a -ErrorAction SilentlyContinue) }
+  foreach ($pk in $pacotes) {
+    try { Remove-AppxPackage -Package $pk.PackageFullName -AllUsers -ErrorAction Stop; $removida = $true }
+    catch { Aviso "Não foi possível remover $($pk.Name): $(($_.Exception.Message -split "`n")[0])" }
   }
   $Provisionadas | Where-Object { $_.DisplayName -like $a } | ForEach-Object {
     try { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -AllUsers -ErrorAction Stop | Out-Null; $removida = $true } catch {}
@@ -346,7 +410,7 @@ foreach ($a in $AppsRemover) {
 
 # ----------------------------- 4. DEFINIÇÕES DO SISTEMA ----------------------
 
-Passo '4/6 A desligar telemetria, sugestões e programas em segundo plano'
+Passo '4/7 A desligar telemetria, sugestões e programas em segundo plano'
 
 $Pol = 'HKLM:\SOFTWARE\Policies\Microsoft'
 # Telemetria
@@ -365,8 +429,6 @@ Definir-Registo "$Pol\Dsh" 'AllowNewsAndInterests' 0
 Definir-Registo "$Pol\Windows\Windows Feeds" 'EnableFeeds' 0
 # Gravação de jogos
 Definir-Registo "$Pol\Windows\GameDVR" 'AllowGameDVR' 0
-# Aplicações da Store em segundo plano
-Definir-Registo "$Pol\Windows\AppPrivacy" 'LetAppsRunInBackground' 2
 # Copilot
 Definir-Registo "$Pol\Windows\WindowsCopilot" 'TurnOffWindowsCopilot' 1
 # Edge e Chrome não ficam a correr depois de fechados
@@ -393,6 +455,18 @@ foreach ($s in $ServicosDesligar) {
   }
 }
 
+# Desfaz alterações da primeira versão deste script (caso já tenha sido corrido neste portátil)
+Remove-ItemProperty -Path "$Pol\Windows\AppPrivacy" -Name 'LetAppsRunInBackground' -ErrorAction SilentlyContinue
+if (Get-Service -Name dmwappushservice -ErrorAction SilentlyContinue) { Set-Service -Name dmwappushservice -StartupType Manual -ErrorAction SilentlyContinue }
+Enable-ScheduledTask -TaskPath '\Microsoft\Windows\Application Experience\' -TaskName 'Microsoft Compatibility Appraiser' -ErrorAction SilentlyContinue | Out-Null
+
+# Indexação de pesquisa: em vez de desligar (estragaria a pesquisa no Iniciar e no
+# Explorador), só arranca uns minutos depois de o portátil ligar, para não atrasar o arranque
+if (Get-Service -Name WSearch -ErrorAction SilentlyContinue) {
+  & sc.exe config WSearch start= delayed-auto 2>&1 | Out-Null
+  Ok 'Indexação de pesquisa com arranque adiado'
+}
+
 foreach ($t in $TarefasDesligar) {
   if (Get-ScheduledTask -TaskPath $t[0] -TaskName $t[1] -ErrorAction SilentlyContinue) {
     Disable-ScheduledTask -TaskPath $t[0] -TaskName $t[1] -ErrorAction SilentlyContinue | Out-Null
@@ -402,7 +476,7 @@ foreach ($t in $TarefasDesligar) {
 
 # ----------------------------- 5. CONTAS (efeitos visuais e sugestões) ------
 
-Passo '5/6 A aplicar definições de desempenho em todas as contas'
+Passo '5/7 A aplicar definições de desempenho em todas as contas'
 
 # Definições por conta: chave, nome, tipo, valor
 $DefConta = @(
@@ -418,7 +492,6 @@ $DefConta = @(
   @('Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced', 'ShowCopilotButton', 'REG_DWORD', '0'),
   @('Software\Microsoft\Windows\CurrentVersion\Themes\Personalize', 'EnableTransparency', 'REG_DWORD', '0'),
   @('Software\Microsoft\Windows\DWM', 'EnableAeroPeek', 'REG_DWORD', '0'),
-  @('Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications', 'GlobalUserDisabled', 'REG_DWORD', '1'),
   @('Software\Microsoft\Windows\CurrentVersion\Search', 'BingSearchEnabled', 'REG_DWORD', '0'),
   @('Software\Policies\Microsoft\Windows\Explorer', 'DisableSearchBoxSuggestions', 'REG_DWORD', '1'),
   @('Software\Policies\Microsoft\Windows\WindowsCopilot', 'TurnOffWindowsCopilot', 'REG_DWORD', '1'),
@@ -437,6 +510,8 @@ $DefConta = @(
 
 function Aplicar-Conta([string]$raiz) {
   foreach ($d in $DefConta) { Definir-RegistoConta $raiz $d[0] $d[1] $d[2] $d[3] }
+  # Desfaz uma alteração da primeira versão deste script
+  & reg.exe delete "$raiz\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" /v GlobalUserDisabled /f 2>&1 | Out-Null
 }
 
 # Contas existentes (as que têm sessão aberta já estão carregadas; as outras carregam-se e descarregam-se)
@@ -450,19 +525,98 @@ foreach ($h in $hives) {
     Aplicar-Conta "HKU\$($h.Sid)"
     Ok "Conta $($h.Nome)"
   } elseif (Test-Path -LiteralPath $h.Ficheiro) {
-    & reg.exe load 'HKU\OtimizarTmp' $h.Ficheiro 2>&1 | Out-Null
+    # Nome diferente para cada conta: se uma falhar a descarregar, as seguintes não ficam bloqueadas
+    $tmp = 'HKU\OtimizarTmp' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+    & reg.exe load $tmp $h.Ficheiro 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
-      Aplicar-Conta 'HKU\OtimizarTmp'
-      [gc]::Collect(); Start-Sleep -Milliseconds 500
-      & reg.exe unload 'HKU\OtimizarTmp' 2>&1 | Out-Null
-      Ok "Conta $($h.Nome)"
+      Aplicar-Conta $tmp
+      $descarregada = $false
+      for ($i = 0; $i -lt 5 -and -not $descarregada; $i++) {
+        [gc]::Collect(); [gc]::WaitForPendingFinalizers(); Start-Sleep -Seconds 1
+        & reg.exe unload $tmp 2>&1 | Out-Null
+        $descarregada = ($LASTEXITCODE -eq 0)
+      }
+      if ($descarregada) { Ok "Conta $($h.Nome)" }
+      else { $ReiniciarObrigatorio = $true; Aviso "Conta $($h.Nome): definições aplicadas, mas é OBRIGATÓRIO reiniciar antes de alguém entrar" }
     } else { Aviso "Não foi possível abrir a conta $($h.Nome)" }
   }
 }
 
-# ----------------------------- 6. RESUMO -------------------------------------
+# ----------------------------- 6. APLICAÇÕES DAS AULAS -----------------------
 
-Passo '6/6 Resumo'
+Passo '6/7 A instalar as aplicações das aulas (TIC e CEA)'
+
+$AppsFalharam = @()
+$InstSoAdmin = @()
+# Códigos do winget: sucesso, "já instalado" e "instalado, falta reiniciar"
+$CodigosOk = @(0, -1978335189, -1978335135, -1978334967)
+$SemInstaladorMaquina = -1978335216   # o pacote não tem instalação "para todos"
+$WingetNaoArranca = -1073741515       # falta uma biblioteca do Windows ao winget
+
+function Versao-Pasta($pasta) { try { return [version](($pasta.Name -split '_')[1]) } catch { return [version]'0.0' } }
+
+$Winget = $null
+$cw = Get-Command winget.exe -ErrorAction SilentlyContinue
+if ($cw) { $Winget = $cw.Source }
+else {
+  # Conta de administrador sem o atalho do winget: usa a versão mais recente instalada no sistema
+  $pastaApps = Join-Path $env:ProgramFiles 'WindowsApps'
+  $ai = Get-ChildItem -LiteralPath $pastaApps -Filter 'Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe' -Directory -ErrorAction SilentlyContinue |
+        Sort-Object { Versao-Pasta $_ } -Descending | Select-Object -First 1
+  if ($ai -and (Test-Path -LiteralPath (Join-Path $ai.FullName 'winget.exe'))) {
+    $Winget = Join-Path $ai.FullName 'winget.exe'
+    $vc = Get-ChildItem -LiteralPath $pastaApps -Filter 'Microsoft.VCLibs.140.00.UWPDesktop_*_x64__8wekyb3d8bbwe' -Directory -ErrorAction SilentlyContinue |
+          Sort-Object { Versao-Pasta $_ } -Descending | Select-Object -First 1
+    if ($vc) { $env:PATH = "$($vc.FullName);$env:PATH" }
+  }
+}
+
+if (-not $Winget) {
+  Aviso 'O winget (Instalador de Aplicações) não está disponível neste portátil.'
+  Aviso 'Atualize o "Instalador de Aplicações" na Microsoft Store e volte a correr o script.'
+  $AppsFalharam = @($AppsInstalar | ForEach-Object { $_[1] })
+} else {
+  foreach ($app in $AppsInstalar) {
+    $id = $app[0]; $nomeApp = $app[1]
+    & $Winget list --id $id --exact --source winget --accept-source-agreements 2>&1 | Out-Null
+    $codigo = $LASTEXITCODE
+    if ($codigo -eq $WingetNaoArranca) {
+      Aviso 'O winget não consegue arrancar neste portátil. Atualize o "Instalador de Aplicações" na Microsoft Store e volte a correr o script.'
+      $AppsFalharam = @($AppsInstalar | ForEach-Object { $_[1] })
+      break
+    }
+    if ($codigo -eq 0) { Ok "$nomeApp já estava instalado"; continue }
+
+    Write-Host "    A instalar $nomeApp..."
+    & $Winget install --id $id --exact --source winget --silent --scope machine `
+        --accept-package-agreements --accept-source-agreements
+    $codigo = $LASTEXITCODE
+    if ($codigo -eq $SemInstaladorMaquina) {
+      # Só para pacotes que não têm instalação "para todos": instala na conta atual
+      & $Winget install --id $id --exact --source winget --silent `
+          --accept-package-agreements --accept-source-agreements
+      $codigo = $LASTEXITCODE
+      if ($CodigosOk -contains $codigo) { $InstSoAdmin += $nomeApp }
+    }
+    if ($CodigosOk -contains $codigo) { Ok "$nomeApp instalado" }
+    else { $AppsFalharam += $nomeApp; Aviso "$nomeApp NÃO foi instalado (código $codigo; verifique a internet)" }
+  }
+}
+
+# Atalhos web na Área de Trabalho de todas as contas
+$AreaPublica = [Environment]::GetFolderPath('CommonDesktopDirectory')
+foreach ($a in $AtalhosWeb) {
+  $partes = $a -split '\|', 2
+  $ficheiroUrl = Join-Path $AreaPublica (($partes[0] -replace '[\\/:*?"<>|]', '') + '.url')
+  try {
+    [IO.File]::WriteAllText($ficheiroUrl, "[InternetShortcut]`r`nURL=$($partes[1])`r`n", [Text.Encoding]::ASCII)
+    Ok "Atalho: $($partes[0])"
+  } catch { Aviso "Não foi possível criar o atalho $($partes[0])" }
+}
+
+# ----------------------------- 7. RESUMO -------------------------------------
+
+Passo '7/7 Resumo'
 $LivreDepois = EspacoLivre
 $Ganho = $LivreDepois - $LivreAntes
 $Duracao = [int]((Get-Date) - $Inicio).TotalMinutes
@@ -472,10 +626,23 @@ Write-Host '============================================================' -Foreg
 Write-Host "  Concluído em $Duracao min — $env:COMPUTERNAME" -ForegroundColor Green
 Write-Host "  Espaço livre antes:  $(Tamanho $LivreAntes)" -ForegroundColor Green
 Write-Host "  Espaço livre depois: $(Tamanho $LivreDepois)  (+$(Tamanho ([math]::Max($Ganho, 0))))" -ForegroundColor Green
+Write-Host "  Ficheiros das contas apagados: $(Tamanho $TotalContas)" -ForegroundColor Green
 Write-Host "  Registo: $Registo" -ForegroundColor Green
 Write-Host '============================================================' -ForegroundColor Green
+if ($AppsFalharam.Count -gt 0) {
+  Write-Host ''
+  Write-Host ('Aplicações por instalar: ' + ($AppsFalharam -join ', ')) -ForegroundColor Yellow
+  Write-Host 'Volte a correr o script com internet: só instala o que faltar.' -ForegroundColor Yellow
+}
+if ($InstSoAdmin.Count -gt 0) {
+  Write-Host ('Instaladas só para a conta atual (não há versão para todos): ' + ($InstSoAdmin -join ', ')) -ForegroundColor Yellow
+}
 Write-Host ''
-Write-Host 'É preciso reiniciar para as alterações ficarem todas ativas.'
+if ($ReiniciarObrigatorio) {
+  Write-Host 'ATENÇÃO: reinicie ANTES de alguém entrar no portátil.' -ForegroundColor Red
+} else {
+  Write-Host 'É preciso reiniciar para as alterações ficarem todas ativas.'
+}
 Stop-Transcript | Out-Null
 
 $r = Read-Host 'Reiniciar agora? (S/N)'

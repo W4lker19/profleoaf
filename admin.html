@@ -56,6 +56,7 @@ input[type=password], input[type=datetime-local], input[type=text], input[type=u
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .btn { font: 600 .95rem var(--body); border-radius: 10px; padding: 10px 16px; border: 2px solid transparent; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
 .btn.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+a.btn { text-decoration: none; display: inline-block; }
 .btn.link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; font-weight: 500; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--robot); outline-offset: 2px; }
@@ -166,6 +167,17 @@ textarea { resize: vertical; min-height: 70px; }
     <p class="help">Depois de guardar, o site atualiza em um ou dois minutos. As atividades agendadas abrem sozinhas na data escolhida, sem precisares de voltar aqui.</p>
   </section>
 
+  <section class="box" id="toolsBox" hidden>
+    <h2>Ferramentas (profleoaf.pt/tools)</h2>
+    <p class="help">Escolhe que ferramentas aparecem na página de ferramentas. Ocultar só esconde o cartão: o LimparBrowsers continua protegido pela sua palavra-passe.</p>
+    <div id="toolsList"></div>
+    <div class="msg" id="toolsMsg" hidden></div>
+    <div class="savebar">
+      <button type="button" class="btn" id="toolsSave" disabled>Guardar ferramentas</button>
+      <a class="btn ghost" href="tools/" target="_blank" rel="noopener">Abrir a página</a>
+    </div>
+  </section>
+
   <section class="box" id="formBox" hidden>
     <h2>Novo formulário</h2>
     <p class="help">Cola o link de partilha de um Microsoft Forms ou Google Forms. Aparece na aba Formulários do site depois de carregares em Guardar alterações.</p>
@@ -225,8 +237,8 @@ let token = '', cfg = null, cfgSha = null, actSha = '', actText = '', items = []
 /* ---------- utilitários ---------- */
 function msg(id, kind, text) { const m = $(id); m.hidden = !text; m.className = 'msg ' + (kind || ''); m.textContent = text || ''; }
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-function view(name) { ['loginBox', 'setupBox', 'panel', 'formBox', 'security'].forEach(id => $(id).hidden = true); $('logout').hidden = name !== 'panel';
-  if (name === 'panel') { $('panel').hidden = false; $('formBox').hidden = false; $('security').hidden = false; } else $(name).hidden = false; }
+function view(name) { ['loginBox', 'setupBox', 'panel', 'toolsBox', 'formBox', 'security'].forEach(id => $(id).hidden = true); $('logout').hidden = name !== 'panel';
+  if (name === 'panel') { $('panel').hidden = false; $('toolsBox').hidden = false; $('formBox').hidden = false; $('security').hidden = false; } else $(name).hidden = false; }
 const toB64 = bytes => { let s = ''; new Uint8Array(bytes).forEach(b => s += String.fromCharCode(b)); return btoa(s); };
 const fromB64 = s => Uint8Array.from(atob(s.replace(/\s/g, '')), c => c.charCodeAt(0));
 const textToB64 = t => toB64(new TextEncoder().encode(t));
@@ -377,9 +389,64 @@ async function save() {
   } catch (e) { msg('saveMsg', 'bad', e.message); $('save').disabled = false; }
 }
 
+/* ---------- ferramentas (tools/ferramentas.js) ---------- */
+const TOOL_FILE = 'tools/ferramentas.js', TSTART = '/*FERRAMENTAS-INICIO*/', TEND = '/*FERRAMENTAS-FIM*/';
+let toolSha = '', toolText = '', tools = [], toolsOrig = '';
+const ESTADOS_TOOL = [['visivel', 'Visível'], ['oculta', 'Oculta']];
+async function loadTools() {
+  tools = []; toolsOrig = '';
+  try {
+    const f = await getFile(TOOL_FILE, true);
+    if (!f) throw new Error('Não encontrei o ficheiro tools/ferramentas.js no repositório.');
+    const a = f.text.indexOf(TSTART), b = f.text.indexOf(TEND);
+    if (a < 0 || b < 0) throw new Error('O tools/ferramentas.js não tem as marcas FERRAMENTAS-INICIO e FERRAMENTAS-FIM.');
+    tools = JSON.parse(f.text.slice(a + TSTART.length, b)).map(t => ({ ...t, estado: t.estado === 'oculta' ? 'oculta' : 'visivel' }));
+    toolSha = f.sha; toolText = f.text; toolsOrig = JSON.stringify(tools);
+    msg('toolsMsg', '', '');
+  } catch (e) { msg('toolsMsg', 'bad', e.message); }
+  renderTools();
+}
+function renderTools() {
+  const orig = toolsOrig ? JSON.parse(toolsOrig) : [];
+  $('toolsList').innerHTML = tools.map((t, i) => {
+    const o = orig.find(x => x.id === t.id), changed = o && o.estado !== t.estado;
+    const [cls, txt] = t.estado === 'visivel' ? ['on', 'Aparece na página'] : ['off', 'Oculta'];
+    return `<div class="item">
+      <div class="item-head">
+        <div style="min-width:0">${t.descricao ? `<div class="meta"><span>${esc(t.descricao)}</span></div>` : ''}<h3>${esc(t.titulo)}</h3></div>
+        <span class="status ${cls}">${esc(txt)}</span>
+      </div>
+      <div class="row">
+        <div class="seg" role="radiogroup" aria-label="Estado de ${esc(t.titulo)}">
+          ${ESTADOS_TOOL.map(([v, l]) => `<input type="radio" name="t${i}" id="t${i}${v}" value="${v}" data-t="${i}" ${t.estado === v ? 'checked' : ''}><label for="t${i}${v}">${l}</label>`).join('')}
+        </div>
+        <div class="meta">${changed ? '<span class="changed">Por guardar</span>' : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  $('toolsList').querySelectorAll('input[type=radio]').forEach(r => r.onchange = () => {
+    msg('toolsMsg', '', ''); tools[+r.dataset.t].estado = r.value; renderTools(); $('t' + r.dataset.t + r.value).focus();
+  });
+  $('toolsSave').disabled = !toolsOrig || JSON.stringify(tools) === toolsOrig;
+}
+async function saveTools() {
+  const orig = JSON.parse(toolsOrig);
+  const changes = tools.filter(t => { const o = orig.find(x => x.id === t.id); return o && o.estado !== t.estado; })
+    .map(t => t.titulo + (t.estado === 'visivel' ? ' visível' : ' oculta'));
+  $('toolsSave').disabled = true; msg('toolsMsg', '', 'A guardar…');
+  const a = toolText.indexOf(TSTART), b = toolText.indexOf(TEND);
+  const novo = toolText.slice(0, a + TSTART.length) + JSON.stringify(tools, null, 2) + toolText.slice(b);
+  try {
+    toolSha = await putFile(TOOL_FILE, novo, toolSha, 'Ferramentas: ' + changes.join('; '));
+    toolText = novo; toolsOrig = JSON.stringify(tools); renderTools();
+    msg('toolsMsg', 'ok', 'Guardado: ' + changes.join('; ') + '. A página das ferramentas atualiza em alguns minutos.');
+  } catch (e) { msg('toolsMsg', 'bad', e.message); $('toolsSave').disabled = false; }
+}
+
 /* ---------- fluxos ---------- */
 async function openPanel() {
   await loadActivities(); view('panel'); msg('saveMsg', '', ''); render();
+  await loadTools();
 }
 async function boot() {
   if (!window.isSecureContext || !crypto.subtle) { $('insecure').hidden = false; return; }
@@ -447,12 +514,13 @@ $('pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }
 $('forgot').onclick = () => setupMode(true);
 $('setupCancel').onclick = () => { view('loginBox'); msg('setupMsg', '', ''); };
 $('setup').onclick = doSetup;
+$('toolsSave').onclick = saveTools;
 $('save').onclick = save;
 $('addForm').onclick = addForm;
 $('reload').onclick = async () => { msg('saveMsg', '', 'A recarregar…'); try { await loadActivities(); render(); msg('saveMsg', '', ''); } catch (e) { msg('saveMsg', 'bad', e.message); } };
 $('change').onclick = doChange;
 $('logout').onclick = () => { sessSet(''); token = ''; items = []; view(cfg ? 'loginBox' : 'setupBox'); msg('topMsg', 'ok', 'Sessão terminada.'); };
-window.addEventListener('beforeunload', e => { if (items.length && snapshot() !== original) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { if ((items.length && snapshot() !== original) || (toolsOrig && JSON.stringify(tools) !== toolsOrig)) { e.preventDefault(); e.returnValue = ''; } });
 
 boot();
 </script>
