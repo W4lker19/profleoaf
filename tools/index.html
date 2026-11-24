@@ -33,6 +33,7 @@ a.btn { text-decoration: none; display: inline-block; }
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+.a-carregar [data-ferramenta], .a-carregar #nenhuma { display: none !important; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 32px; }
@@ -96,22 +97,37 @@ ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
   <p class="card muted" id="nenhuma" hidden>Não há ferramentas disponíveis neste momento.</p>
 </div>
 
-<script src="ferramentas.js"></script>
 <script>
 // Mostra só as ferramentas marcadas como visíveis no admin (tools/ferramentas.js).
-// Se a lista não carregar, mostra tudo.
+// A lista é pedida sempre com um endereço novo (?t=...) para não vir de cache:
+// uma alteração no admin aparece logo que o site é atualizado (1-2 minutos).
+// Enquanto a lista carrega os cartões ficam escondidos; se não carregar, mostra tudo.
 (function () {
-  const lista = Array.isArray(window.FERRAMENTAS) ? window.FERRAMENTAS : null;
-  if (!lista) return;
-  const estado = {};
-  lista.forEach(f => { estado[f.id] = f.estado; });
-  let visiveis = 0;
-  document.querySelectorAll('[data-ferramenta]').forEach(el => {
-    const oculta = estado[el.dataset.ferramenta] === 'oculta';
-    el.hidden = oculta;
-    if (!oculta) visiveis++;
-  });
-  document.getElementById('nenhuma').hidden = visiveis > 0;
+  const raiz = document.documentElement;
+  raiz.classList.add('a-carregar');
+  let feito = false;
+  function aplicar() {
+    if (feito) return; feito = true;
+    const lista = Array.isArray(window.FERRAMENTAS) ? window.FERRAMENTAS : null;
+    if (lista) {
+      const estado = {};
+      lista.forEach(f => { estado[f.id] = f.estado; });
+      let visiveis = 0;
+      document.querySelectorAll('[data-ferramenta]').forEach(el => {
+        const oculta = estado[el.dataset.ferramenta] === 'oculta';
+        el.hidden = oculta;
+        if (!oculta) visiveis++;
+      });
+      document.getElementById('nenhuma').hidden = visiveis > 0;
+    }
+    raiz.classList.remove('a-carregar');
+  }
+  const s = document.createElement('script');
+  s.src = 'ferramentas.js?t=' + Date.now();
+  s.onload = aplicar;
+  s.onerror = aplicar;
+  document.head.appendChild(s);
+  setTimeout(aplicar, 4000);
 })();
 </script>
 <script>
