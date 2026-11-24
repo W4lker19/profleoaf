@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Autoavaliação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* Autoavaliação do aluno: turma + código, escolha do nome na lista, 6 afirmações de 1 a 5, nível proposto e duas frases. */
+:root {
+  --bg: #f4f7fb; --grid: #dfe8f2; --paper: #ffffff; --line: #d3dfeb; --ink: #1b2a39; --muted: #586a7c;
+  --accent: #2a5d8f; --accent-ink: #ffffff; --ok: #1f8a4c; --ok-bg: #e2f4e9; --bad: #b8432f; --bad-bg: #fbe5e2; --focus: #f2b705;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif; --body: "Lexend", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1822; --grid: #182533; --paper: #172230; --line: #263647; --ink: #e8eef5; --muted: #9eb0c2;
+    --accent: #6aa7dd; --accent-ink: #0d1620; --ok: #66d498; --ok-bg: #173325; --bad: #ff8a7a; --bad-bg: #3a1d1a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1822; --grid: #182533; --paper: #172230; --line: #263647; --ink: #e8eef5; --muted: #9eb0c2;
+  --accent: #6aa7dd; --accent-ink: #0d1620; --ok: #66d498; --ok-bg: #173325; --bad: #ff8a7a; --bad-bg: #3a1d1a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background-color: var(--bg);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 18px; }
+a.back { color: var(--accent); font-weight: 600; text-decoration: none; font-size: .95rem; }
+h1 { font-family: var(--display); font-weight: 600; font-size: clamp(1.8rem, 5vw, 2.4rem); margin: 0; line-height: 1.15; }
+.sub { color: var(--muted); margin: 4px 0 0; }
+.card { background: var(--paper); border: 2px solid var(--line); border-radius: 18px; padding: 20px; display: grid; gap: 14px; }
+.card h2 { font-family: var(--display); font-weight: 600; font-size: 1.3rem; margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+label.f { display: grid; gap: 5px; font-weight: 600; font-size: .95rem; }
+input[type=text], select, textarea { font: 400 1rem var(--body); color: var(--ink); background: var(--bg); border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 46px; }
+textarea { width: 100%; min-height: 70px; resize: vertical; }
+select { min-width: 220px; }
+.btn { font: 600 1rem var(--body); border-radius: 12px; padding: 11px 20px; min-height: 46px; border: 2px solid transparent; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .6; cursor: default; }
+.btn.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.msg { border-radius: 12px; padding: 11px 14px; font-size: .95rem; }
+.msg.bad { background: var(--bad-bg); color: var(--bad); }
+.msg.ok { background: var(--ok-bg); color: var(--ok); }
+.escala { color: var(--muted); font-size: .9rem; margin: 0; }
+.item { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+.item:first-of-type { border-top: 0; padding-top: 0; }
+.item p { margin: 0; font-weight: 500; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+legend { padding: 0; }
+.opts { display: flex; gap: 8px; flex-wrap: wrap; }
+.opts input { position: absolute; opacity: 0; pointer-events: none; }
+.opts label { width: 48px; height: 48px; display: grid; place-items: center; border: 2px solid var(--line); border-radius: 12px; font-family: var(--display); font-weight: 600; font-size: 1.15rem; cursor: pointer; background: var(--bg); }
+.opts input:checked + label { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.opts input:focus-visible + label { outline: 3px solid var(--focus); outline-offset: 2px; }
+.nivel .opts label { width: 56px; height: 56px; font-size: 1.35rem; }
+.quem { font-family: var(--display); font-size: 1.15rem; font-weight: 600; }
+.fim { text-align: center; padding: 28px 20px; }
+.fim .big { font-family: var(--display); font-size: 1.6rem; font-weight: 600; margin: 0 0 6px; }
+.err { outline: 2px solid var(--bad); outline-offset: 4px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/#formularios">← Voltar às atividades</a>
+  <header>
+    <h1>Autoavaliação</h1>
+    <p class="sub" id="titulo">TIC · 7.º ano</p>
+  </header>
+
+  <!-- Passo 1: turma e código -->
+  <section class="card" id="passo1">
+    <h2>1. A tua turma</h2>
+    <form id="f1" class="row">
+      <label class="f">Turma
+        <select id="turma" required>
+          <option value="">Escolhe…</option>
+          <option>7.º C</option><option>7.º D</option><option>7.º E</option><option>7.º G</option><option>7.º H</option>
+        </select>
+      </label>
+      <label class="f">Código da turma
+        <input type="text" id="codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" required placeholder="O professor diz-te o código">
+      </label>
+      <button class="btn" id="b1" type="submit">Continuar</button>
+    </form>
+    <div class="msg" id="m1" hidden></div>
+  </section>
+
+  <!-- Passo 2: nome e respostas -->
+  <form class="card" id="passo2" hidden novalidate>
+    <h2>2. Quem és?</h2>
+    <label class="f">O teu nome
+      <select id="aluno" required><option value="">Escolhe o teu nome…</option></select>
+    </label>
+
+    <h2>3. Durante o período…</h2>
+    <p class="escala">1 = nunca ou muito pouco · 5 = sempre ou muito bem. Responde com honestidade: isto não é a tua nota.</p>
+    <div id="itens"></div>
+
+    <fieldset class="nivel" id="fnivel">
+      <legend><h2>4. Que nível achas que mereces?</h2></legend>
+      <div class="opts" id="nivel"></div>
+    </fieldset>
+
+    <label class="f">Porquê? (uma frase)
+      <textarea id="porque" maxlength="400"></textarea>
+    </label>
+    <label class="f">No próximo período vou melhorar…
+      <textarea id="melhorar" maxlength="400"></textarea>
+    </label>
+
+    <div class="row">
+      <button class="btn" id="b2" type="submit">Enviar a autoavaliação</button>
+      <button class="btn ghost" id="voltar" type="button">Mudar de turma</button>
+    </div>
+    <div class="msg" id="m2" hidden></div>
+  </form>
+
+  <!-- Passo 3: enviado -->
+  <section class="card fim" id="passo3" hidden>
+    <p class="big">Autoavaliação enviada ✓</p>
+    <p id="resumo" class="sub"></p>
+    <p class="sub">Se te enganaste, podes voltar a preencher: fica a última resposta.</p>
+    <div><button class="btn ghost" id="outra" type="button">Preencher outra vez</button></div>
+  </section>
+</div>
+
+<script>
+const API = 'https://ferramentas.profleoaf.pt';
+const ITENS = [
+  'Fiz as tarefas pedidas e entreguei-as dentro do prazo.',
+  'Percebi a matéria do período.',
+  'Trabalhei bem com o meu par no projeto.',
+  'Estive atento e participei nas aulas.',
+  'Respeitei os colegas, o professor e o material da sala.',
+  'Usei o computador e a internet de forma segura e responsável.',
+];
+const $ = id => document.getElementById(id);
+let sessao = null; // { turma, codigo, alunos }
+
+function msg(el, tipo, t) { el.className = 'msg ' + tipo; el.textContent = t; el.hidden = !t; }
+function escala(nome, grande) {
+  const d = document.createElement('div'); d.className = 'opts';
+  for (let v = 1; v <= 5; v++) {
+    const id = nome + '-' + v;
+    d.insertAdjacentHTML('beforeend', '<input type="radio" name="' + nome + '" id="' + id + '" value="' + v + '"><label for="' + id + '">' + v + '</label>');
+  }
+  return d;
+}
+ITENS.forEach((t, i) => {
+  const fs = document.createElement('fieldset'); fs.className = 'item'; fs.id = 'it' + i;
+  fs.innerHTML = '<legend><p>' + (i + 1) + '. ' + t + '</p></legend>';
+  fs.appendChild(escala('i' + i));
+  $('itens').appendChild(fs);
+});
+$('nivel').replaceWith(Object.assign(escala('nivel'), { id: 'nivel' }));
+
+async function post(caminho, corpo) {
+  const r = await fetch(API + caminho, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || ('Erro ' + r.status));
+  return j;
+}
+
+$('f1').addEventListener('submit', async e => {
+  e.preventDefault();
+  const turma = $('turma').value, codigo = $('codigo').value.trim();
+  if (!turma || !codigo) { msg($('m1'), 'bad', 'Escolhe a turma e escreve o código.'); return; }
+  $('b1').disabled = true; msg($('m1'), 'ok', 'A verificar…');
+  try {
+    const j = await post('/auto/turma', { turma, codigo });
+    sessao = { turma, codigo, alunos: j.alunos };
+    if (j.titulo) $('titulo').textContent = j.titulo;
+    const sel = $('aluno'); sel.length = 1;
+    j.alunos.forEach(a => sel.add(new Option(a.n + ' · ' + a.nome, a.n)));
+    msg($('m1'), '', '');
+    $('passo1').hidden = true; $('passo2').hidden = false; sel.focus();
+  } catch (err) {
+    msg($('m1'), 'bad', err.message === 'Failed to fetch' ? 'Sem ligação. Tenta outra vez.' : err.message);
+  } finally { $('b1').disabled = false; }
+});
+
+$('voltar').addEventListener('click', () => { $('passo2').hidden = true; $('passo1').hidden = false; });
+
+$('passo2').addEventListener('submit', async e => {
+  e.preventDefault();
+  document.querySelectorAll('.err').forEach(x => x.classList.remove('err'));
+  const numero = parseInt($('aluno').value, 10);
+  const val = n => { const c = document.querySelector('input[name="' + n + '"]:checked'); return c ? parseInt(c.value, 10) : null; };
+  const itens = ITENS.map((_, i) => val('i' + i));
+  const nivel = val('nivel');
+  const falta = [];
+  if (!numero) { falta.push('o teu nome'); $('aluno').classList.add('err'); }
+  itens.forEach((v, i) => { if (!v) $('it' + i).classList.add('err'); });
+  if (itens.some(v => !v)) falta.push('todas as linhas de 1 a 5');
+  if (!nivel) { falta.push('o nível'); $('fnivel').classList.add('err'); }
+  if (falta.length) { msg($('m2'), 'bad', 'Falta escolher ' + falta.join(', ') + '.'); const p = document.querySelector('.err'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  $('b2').disabled = true; msg($('m2'), 'ok', 'A enviar…');
+  try {
+    await post('/auto/resposta', { turma: sessao.turma, codigo: sessao.codigo, numero, itens, nivel, porque: $('porque').value, melhorar: $('melhorar').value });
+    const a = sessao.alunos.find(x => x.n === numero);
+    $('resumo').textContent = (a ? a.nome + ', ' : '') + sessao.turma + ' · nível proposto: ' + nivel;
+    msg($('m2'), '', '');
+    $('passo2').hidden = true; $('passo3').hidden = false; window.scrollTo(0, 0);
+  } catch (err) {
+    msg($('m2'), 'bad', (err.message === 'Failed to fetch' ? 'Sem ligação.' : err.message) + ' Carrega outra vez em Enviar.');
+  } finally { $('b2').disabled = false; }
+});
+
+$('outra').addEventListener('click', () => { $('passo3').hidden = true; $('passo2').hidden = false; });
+</script>
+</body>
+</html>

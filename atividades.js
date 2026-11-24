@@ -11,6 +11,17 @@
 
 window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
   {
+    "tipo": "formulario",
+    "url": "https://profleoaf.pt/autoavaliacao.html",
+    "disciplina": "TIC · 7.º ano",
+    "tema": "Autoavaliação",
+    "icone": "formulario",
+    "titulo": "Autoavaliação do período",
+    "descricao": "Avalia o teu trabalho no período e propõe o teu nível. O professor dá-te o código da turma.",
+    "estado": "oculta",
+    "disponivelEm": null
+  },
+  {
     "ficheiro": "missao-seguranca.html",
     "disciplina": "TIC · 7.º ano",
     "tema": "Segurança",
