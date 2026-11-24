@@ -159,7 +159,7 @@ $('#copiar').onclick = async () => {
 };
 $('#csv').onclick = () => {
   const head = 'turma;numero;nome;nota;parte1;parte2;data';
-  const rows = dados.map(d => [d.turma, d.numero, '"' + String(d.nome).replace(/"/g, '""') + '"', d.nota, d.p1 ?? '', d.p2 ?? '', d.criado].join(';'));
+  const rows = dados.map(d => [d.turma, d.numero, '"' + String(d.nome).replace(/^[=+\-@\t\r]/, "'$&").replace(/"/g, '""') + '"', d.nota, d.p1 ?? '', d.p2 ?? '', d.criado].join(';'));
   const blob = new Blob(['﻿' + [head, ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = $('#ativ').value + '_resultados.csv'; a.click();
 };

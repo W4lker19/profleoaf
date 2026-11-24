@@ -84,9 +84,14 @@ async function autoavaliacao(req, env, url) {
     if (!Array.isArray(b.itens) || b.itens.length !== AUTO_ITENS || !b.itens.every(v => inteiro(v, 1, 5)) || !inteiro(b.nivel, 1, 5)) {
       return json(req, { erro: 'Responde a todas as linhas (1 a 5) e escolhe o nível.' }, 400);
     }
+    const chave = 'auto:r:' + cfg.periodo + ':' + texto(b.turma, 20) + ':' + aluno.n;
+    // Um aluno não pode substituir a resposta de outro: só o professor (palavra-passe AUTO_KEY) pode alterar uma resposta já guardada.
+    const professor = await autorizado(req, env, 'AUTO_KEY');
+    if (!professor && req.headers.get('Authorization')) { await espera(800); return json(req, { erro: 'Palavra-passe errada' }, 401); }
+    if (!professor && await env.AUTO.get(chave)) return json(req, { erro: 'Já existe uma autoavaliação para este nome. Se te enganaste, fala com o professor.' }, 409);
     const r = { turma: texto(b.turma, 20), numero: aluno.n, nome: aluno.nome, itens: b.itens, nivel: b.nivel,
-      porque: texto(b.porque, 400), melhorar: texto(b.melhorar, 400), data: new Date().toISOString() };
-    await env.AUTO.put('auto:r:' + cfg.periodo + ':' + r.turma + ':' + r.numero, JSON.stringify(r));
+      porque: texto(b.porque, 400), melhorar: texto(b.melhorar, 400), data: new Date().toISOString(), ...(professor ? { origem: 'papel' } : {}) };
+    await env.AUTO.put(chave, JSON.stringify(r));
     return json(req, { ok: true });
   }
 

@@ -218,7 +218,7 @@ function confirmarApagar(b) {
 }
 
 function csv(turmas) {
-  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const q = v => '"' + String(v ?? '').replace(/^[=+\-@\t\r]/, "'$&").replace(/"/g, '""') + '"'; // impede fórmulas no Excel
   const out = ['turma;numero;nome;item1;item2;item3;item4;item5;item6;nivel;porque;melhorar;data'];
   turmas.forEach(t => linhasTurma(t).forEach(l => {
     if (!l.ativo && !l.r) return;
@@ -322,7 +322,7 @@ async function guardarPapel() {
   let ok = 0; const falhas = [];
   for (const e of envios) {
     try {
-      const r = await fetch(API + '/auto/resposta', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(e.corpo) });
+      const r = await fetch(API + '/auto/resposta', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + chave }, body: JSON.stringify(e.corpo) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.erro || ('Erro ' + r.status));
       ok++; e.tr.classList.add('feita');
