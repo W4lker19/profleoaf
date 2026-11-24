@@ -10,6 +10,7 @@
 // DELETE /auto/resposta?periodo=1P&turma=...&numero=N[&disc=TIC|CEA] -> apaga uma resposta (palavra-passe AUTO_KEY)
 // 5.º ano: as turmas cujo nome começa por "5" usam a ficha do 5.º ano, com uma resposta por disciplina (TIC e CEA):
 //   7 afirmações de 1 a 3 (1 Ainda não, 2 Mais ou menos, 3 Sim), nível de 1 a 5 e o que quer melhorar.
+//   Nas fichas lançadas pelo professor, uma afirmação pode ficar 0 ("–", não avaliada).
 //   Chave no KV: auto:r:{periodo}:{turma}:{disc}:{numero}. As respostas do 7.º ano (sem disciplina) ficam como estavam.
 // O segredo AUTO_KEY define-se no painel do Cloudflare.
 
@@ -87,11 +88,14 @@ async function autoavaliacao(req, env, url) {
     if (!t) { await espera(600); return json(req, { erro: 'Turma ou código errado.' }, 401); }
     const aluno = t.alunos.find(a => a.n === b.numero && a.ativo !== false);
     if (!aluno) return json(req, { erro: 'Aluno não encontrado.' }, 400);
+    // Só o professor (palavra-passe AUTO_KEY) pode deixar uma frase por avaliar (0 = "–", por exemplo matéria ainda não dada).
+    const professor = await autorizado(req, env, 'AUTO_KEY');
+    if (!professor && req.headers.get('Authorization')) { await espera(800); return json(req, { erro: 'Palavra-passe errada' }, 401); }
     const turma = texto(b.turma, 20), quinto = e5(turma);
     const disc = quinto ? texto(b.disc, 5).toUpperCase() : '';
     if (quinto) {
       if (!DISCS.includes(disc) || (aluno.so && aluno.so !== disc)) return json(req, { erro: 'Disciplina inválida.' }, 400);
-      if (!Array.isArray(b.itens) || b.itens.length !== AUTO5_ITENS || !b.itens.every(v => inteiro(v, 1, 3)) || !inteiro(b.nivel, 1, 5)) {
+      if (!Array.isArray(b.itens) || b.itens.length !== AUTO5_ITENS || !b.itens.every(v => inteiro(v, professor ? 0 : 1, 3)) || !inteiro(b.nivel, 1, 5)) {
         return json(req, { erro: 'Responde a todas as linhas e escolhe o nível.' }, 400);
       }
     } else if (!Array.isArray(b.itens) || b.itens.length !== AUTO_ITENS || !b.itens.every(v => inteiro(v, 1, 5)) || !inteiro(b.nivel, 1, 5)) {
@@ -99,8 +103,6 @@ async function autoavaliacao(req, env, url) {
     }
     const chave = 'auto:r:' + cfg.periodo + ':' + turma + ':' + (quinto ? disc + ':' : '') + aluno.n;
     // Um aluno não pode substituir a resposta de outro: só o professor (palavra-passe AUTO_KEY) pode alterar uma resposta já guardada.
-    const professor = await autorizado(req, env, 'AUTO_KEY');
-    if (!professor && req.headers.get('Authorization')) { await espera(800); return json(req, { erro: 'Palavra-passe errada' }, 401); }
     if (!professor && await env.AUTO.get(chave)) return json(req, { erro: 'Já existe uma autoavaliação para este nome. Se te enganaste, fala com o professor.' }, 409);
     const r = { turma, ...(quinto ? { disc } : {}), numero: aluno.n, nome: aluno.nome, itens: b.itens, nivel: b.nivel,
       porque: texto(b.porque, 400), melhorar: texto(b.melhorar, 400), data: new Date().toISOString(), ...(professor ? { origem: 'papel' } : {}) };
