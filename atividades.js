@@ -13,7 +13,7 @@ window.ATIVIDADES = /*ATIVIDADES-INICIO*/[
   {
     "tipo": "formulario",
     "url": "https://profleoaf.pt/autoavaliacao.html",
-    "disciplina": "TIC · 7.º ano",
+    "disciplina": "TIC e CEA · 5.º e 7.º ano",
     "tema": "Autoavaliação",
     "icone": "formulario",
     "titulo": "Autoavaliação do período",

@@ -9,7 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Lexend:wght@400;500;600&display=swap">
 <style>
-/* Autoavaliação do aluno: turma + código, escolha do nome na lista, 6 afirmações de 1 a 5, nível proposto e duas frases. */
+/* Autoavaliação do aluno: turma + código, escolha do nome na lista, 6 afirmações de 1 a 5, nível proposto e duas frases.
+   5.º ano: a mesma página, com a ficha do 5.º ano (TIC e CEA-STEAM separadas): 7 afirmações Sim / Mais ou menos / Ainda não, nível e o que quer melhorar. */
 :root {
   --bg: #f4f7fb; --grid: #dfe8f2; --paper: #ffffff; --line: #d3dfeb; --ink: #1b2a39; --muted: #586a7c;
   --accent: #2a5d8f; --accent-ink: #ffffff; --ok: #1f8a4c; --ok-bg: #e2f4e9; --bad: #b8432f; --bad-bg: #fbe5e2; --focus: #f2b705;
@@ -70,6 +71,12 @@ legend { padding: 0; }
 .fim { text-align: center; padding: 28px 20px; }
 .fim .big { font-family: var(--display); font-size: 1.6rem; font-weight: 600; margin: 0 0 6px; }
 .err { outline: 2px solid var(--bad); outline-offset: 4px; border-radius: 8px; }
+.opts.tres label { width: auto; min-width: 92px; padding: 0 14px; font-family: var(--body); font-size: .95rem; }
+.disc { display: grid; gap: 14px; padding: 16px; border: 2px solid var(--line); border-radius: 16px; }
+.disc h2 { display: flex; align-items: center; gap: 10px; }
+.tag { font: 600 .8rem var(--body); border-radius: 99px; padding: 2px 10px; background: var(--accent); color: var(--accent-ink); }
+.disc.cea .tag { background: #7719aa; color: #fff; }
+.feito { color: var(--ok); font-weight: 600; font-size: .95rem; }
 </style>
 </head>
 <body>
@@ -77,7 +84,7 @@ legend { padding: 0; }
   <a class="back" href="/#formularios">← Voltar às atividades</a>
   <header>
     <h1>Autoavaliação</h1>
-    <p class="sub" id="titulo">TIC · 7.º ano</p>
+    <p class="sub" id="titulo">Escolhe a tua turma</p>
   </header>
 
   <!-- Passo 1: turma e código -->
@@ -87,7 +94,8 @@ legend { padding: 0; }
       <label class="f">Turma
         <select id="turma" required>
           <option value="">Escolhe…</option>
-          <option>7.º C</option><option>7.º D</option><option>7.º E</option><option>7.º G</option><option>7.º H</option>
+          <optgroup label="5.º ano"><option>5.º B</option><option>5.º D</option><option>5.º E</option><option>5.º F</option><option>5.º G</option></optgroup>
+          <optgroup label="7.º ano"><option>7.º C</option><option>7.º D</option><option>7.º E</option><option>7.º G</option><option>7.º H</option></optgroup>
         </select>
       </label>
       <label class="f">Código da turma
@@ -128,11 +136,26 @@ legend { padding: 0; }
     <div class="msg" id="m2" hidden></div>
   </form>
 
+  <!-- Passo 2 (5.º ano): nome e as duas fichas, TIC e CEA-STEAM -->
+  <form class="card" id="passo5" hidden novalidate>
+    <h2>2. Quem és?</h2>
+    <label class="f">O teu nome
+      <select id="aluno5" required><option value="">Escolhe o teu nome…</option></select>
+    </label>
+    <p class="escala">Marca o que achas de cada frase. Responde com honestidade: isto não é a tua nota.</p>
+    <div id="fichas5"></div>
+    <div class="row">
+      <button class="btn" id="b5" type="submit">Enviar a autoavaliação</button>
+      <button class="btn ghost" id="voltar5" type="button">Mudar de turma</button>
+    </div>
+    <div class="msg" id="m5" hidden></div>
+  </form>
+
   <!-- Passo 3: enviado -->
   <section class="card fim" id="passo3" hidden>
     <p class="big">Autoavaliação enviada ✓</p>
     <p id="resumo" class="sub"></p>
-    <p class="sub">Se te enganaste, podes voltar a preencher: fica a última resposta.</p>
+    <p class="sub" id="nota3">Se te enganaste, podes voltar a preencher: fica a última resposta.</p>
     <div><button class="btn ghost" id="outra" type="button">Preencher outra vez</button></div>
   </section>
 </div>
@@ -147,8 +170,33 @@ const ITENS = [
   'Respeitei os colegas, o professor e o material da sala.',
   'Usei o computador e a internet de forma segura e responsável.',
 ];
+// Fichas do 5.º ano: as mesmas frases das fichas em papel, separadas por disciplina.
+const FICHAS5 = [
+  { disc: 'TIC', nome: 'TIC', itens: [
+    'Entro no Office 365 sozinho.',
+    'Criei o meu portefólio no OneNote.',
+    'Colei a ligação do portefólio no Word da turma.',
+    'Fiz o meu avatar e coloquei-o em OS MEUS DADOS.',
+    'Trabalhei nas aulas sem precisar de muita ajuda.',
+    'Respeitei os colegas, o professor e os computadores.',
+    'Participei nas aulas.',
+  ] },
+  { disc: 'CEA', nome: 'CEA-STEAM', itens: [
+    'Sei explicar o que é um algoritmo.',
+    'Faço programas no Scratch juntando blocos pela ordem certa.',
+    'Uso blocos de repetição e de condição (se… então) nos meus programas.',
+    'Quando o programa não funciona, procuro o erro e corrijo-o.',
+    'Trabalhei bem com o meu par.',
+    'Respeitei os colegas, o professor e o material do laboratório.',
+    'Participei nas aulas.',
+  ] },
+];
+const RESP5 = [[3, 'Sim'], [2, 'Mais ou menos'], [1, 'Ainda não']];
+const PERIODOS = { '1P': '1.º período', '2P': '2.º período', '3P': '3.º período' };
+const quinto = t => /^5/.test(t);
 const $ = id => document.getElementById(id);
 let sessao = null; // { turma, codigo, alunos }
+let enviadas5 = {}; // disciplinas já guardadas nesta sessão: { TIC: nivel, CEA: nivel }
 
 function msg(el, tipo, t) { el.className = 'msg ' + tipo; el.textContent = t; el.hidden = !t; }
 function escala(nome, grande) {
@@ -167,6 +215,40 @@ ITENS.forEach((t, i) => {
 });
 $('nivel').replaceWith(Object.assign(escala('nivel'), { id: 'nivel' }));
 
+// ---------- Fichas do 5.º ano ----------
+function escala3(nome) {
+  const d = document.createElement('div'); d.className = 'opts tres';
+  RESP5.forEach(([v, t]) => {
+    const id = nome + '-' + v;
+    d.insertAdjacentHTML('beforeend', '<input type="radio" name="' + nome + '" id="' + id + '" value="' + v + '"><label for="' + id + '">' + t + '</label>');
+  });
+  return d;
+}
+FICHAS5.forEach(f => {
+  const sec = document.createElement('section'); sec.className = 'disc ' + f.disc.toLowerCase(); sec.id = 'disc' + f.disc;
+  sec.innerHTML = '<h2><span class="tag">' + f.nome + '</span> Durante o período…</h2><div class="itens"></div>' +
+    '<fieldset class="nivel" id="fn' + f.disc + '"><legend><p class="quem">Que nível achas que mereces em ' + f.nome + '?</p></legend></fieldset>' +
+    '<label class="f">O que queres melhorar no próximo período?<textarea id="ml' + f.disc + '" maxlength="400"></textarea></label>' +
+    '<p class="feito" id="ok' + f.disc + '" hidden></p>';
+  f.itens.forEach((t, i) => {
+    const fs = document.createElement('fieldset'); fs.className = 'item'; fs.id = f.disc + 'it' + i;
+    fs.innerHTML = '<legend><p>' + (i + 1) + '. ' + t + '</p></legend>';
+    fs.appendChild(escala3(f.disc + 'i' + i));
+    sec.querySelector('.itens').appendChild(fs);
+  });
+  sec.querySelector('fieldset.nivel').appendChild(escala('n' + f.disc));
+  $('fichas5').appendChild(sec);
+});
+function discsDoAluno() {
+  const a = sessao && sessao.alunos.find(x => x.n === parseInt($('aluno5').value, 10));
+  return FICHAS5.filter(f => !a || !a.so || a.so === f.disc);
+}
+$('aluno5').addEventListener('change', () => {
+  enviadas5 = {};
+  const ds = discsDoAluno().map(f => f.disc);
+  FICHAS5.forEach(f => { $('disc' + f.disc).hidden = !ds.includes(f.disc); $('ok' + f.disc).hidden = true; });
+});
+
 async function post(caminho, corpo) {
   const r = await fetch(API + caminho, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
   const j = await r.json().catch(() => ({}));
@@ -182,17 +264,21 @@ $('f1').addEventListener('submit', async e => {
   try {
     const j = await post('/auto/turma', { turma, codigo });
     sessao = { turma, codigo, alunos: j.alunos };
-    if (j.titulo) $('titulo').textContent = j.titulo;
-    const sel = $('aluno'); sel.length = 1;
+    enviadas5 = {};
+    const q = quinto(turma);
+    if (q) $('titulo').textContent = 'TIC e CEA-STEAM · 5.º ano · ' + (PERIODOS[j.periodo] || j.periodo);
+    else if (j.titulo) $('titulo').textContent = j.titulo;
+    const sel = q ? $('aluno5') : $('aluno'); sel.length = 1;
     j.alunos.forEach(a => sel.add(new Option(a.n + ' · ' + a.nome, a.n)));
     msg($('m1'), '', '');
-    $('passo1').hidden = true; $('passo2').hidden = false; sel.focus();
+    $('passo1').hidden = true; $(q ? 'passo5' : 'passo2').hidden = false; sel.focus();
   } catch (err) {
     msg($('m1'), 'bad', err.message === 'Failed to fetch' ? 'Sem ligação. Tenta outra vez.' : err.message);
   } finally { $('b1').disabled = false; }
 });
 
 $('voltar').addEventListener('click', () => { $('passo2').hidden = true; $('passo1').hidden = false; });
+$('voltar5').addEventListener('click', () => { $('passo5').hidden = true; $('passo1').hidden = false; });
 
 $('passo2').addEventListener('submit', async e => {
   e.preventDefault();
@@ -219,7 +305,49 @@ $('passo2').addEventListener('submit', async e => {
   } finally { $('b2').disabled = false; }
 });
 
-$('outra').addEventListener('click', () => { $('passo3').hidden = true; $('passo2').hidden = false; });
+$('outra').addEventListener('click', () => {
+  $('passo3').hidden = true;
+  if (sessao && quinto(sessao.turma)) { // próximo aluno no mesmo computador: ficha limpa
+    $('passo5').reset(); enviadas5 = {};
+    FICHAS5.forEach(f => { $('disc' + f.disc).hidden = false; $('ok' + f.disc).hidden = true; });
+    $('passo5').hidden = false;
+  } else $('passo2').hidden = false;
+});
+
+$('passo5').addEventListener('submit', async e => {
+  e.preventDefault();
+  document.querySelectorAll('.err').forEach(x => x.classList.remove('err'));
+  const numero = parseInt($('aluno5').value, 10);
+  const val = n => { const c = document.querySelector('input[name="' + n + '"]:checked'); return c ? parseInt(c.value, 10) : null; };
+  if (!numero) { $('aluno5').classList.add('err'); msg($('m5'), 'bad', 'Falta escolher o teu nome.'); $('aluno5').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  const fichas = discsDoAluno().filter(f => !enviadas5[f.disc]).map(f => ({ f, itens: f.itens.map((_, i) => val(f.disc + 'i' + i)), nivel: val('n' + f.disc), melhorar: $('ml' + f.disc).value }));
+  let falta = false;
+  fichas.forEach(x => {
+    x.itens.forEach((v, i) => { if (!v) { $(x.f.disc + 'it' + i).classList.add('err'); falta = true; } });
+    if (!x.nivel) { $('fn' + x.f.disc).classList.add('err'); falta = true; }
+  });
+  if (falta) { msg($('m5'), 'bad', 'Falta responder a algumas frases ou escolher o nível (marcado a vermelho).'); const p = document.querySelector('.err'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  $('b5').disabled = true; msg($('m5'), 'ok', 'A enviar…');
+  const erros = [];
+  for (const x of fichas) {
+    try {
+      await post('/auto/resposta', { turma: sessao.turma, codigo: sessao.codigo, numero, disc: x.f.disc, itens: x.itens, nivel: x.nivel, melhorar: x.melhorar });
+      enviadas5[x.f.disc] = x.nivel;
+    } catch (err) {
+      if (err.status === 409) enviadas5[x.f.disc] = 'já tinha sido enviada';
+      else erros.push(x.f.nome + ': ' + (err.message === 'Failed to fetch' ? 'sem ligação' : err.message));
+    }
+    if (enviadas5[x.f.disc]) { $('ok' + x.f.disc).textContent = x.f.nome + ' enviada ✓'; $('ok' + x.f.disc).hidden = false; }
+  }
+  $('b5').disabled = false;
+  if (erros.length) { msg($('m5'), 'bad', erros.join(' · ') + '. Carrega outra vez em Enviar.'); return; }
+  const a = sessao.alunos.find(x => x.n === numero);
+  $('resumo').textContent = (a ? a.nome + ', ' : '') + sessao.turma + ' · ' + discsDoAluno().map(f => f.nome + ': ' + (typeof enviadas5[f.disc] === 'number' ? 'nível ' + enviadas5[f.disc] : enviadas5[f.disc])).join(' · ');
+  msg($('m5'), '', '');
+  $('nota3').textContent = 'Se te enganaste, fala com o professor.';
+  $('outra').textContent = 'Preencher para outro aluno';
+  $('passo5').hidden = true; $('passo3').hidden = false; window.scrollTo(0, 0);
+});
 </script>
 </body>
 </html>
