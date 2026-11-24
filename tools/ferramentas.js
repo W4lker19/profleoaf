@@ -12,7 +12,7 @@ window.FERRAMENTAS = /*FERRAMENTAS-INICIO*/[
     "id": "limparbrowsers",
     "titulo": "LimparBrowsers",
     "descricao": "Instalador para os PCs da sala (termina as sessões dos alunos nos browsers).",
-    "estado": "visivel"
+    "estado": "oculta"
   },
   {
     "id": "otimizar",
