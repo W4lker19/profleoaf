@@ -651,6 +651,7 @@ if ($LimpezaProfunda) {
 Passo '4/8 A remover aplicações desnecessárias'
 
 $Provisionadas = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+$AppsPorRemover = @()
 foreach ($a in $AppsRemover) {
   $removida = $false
   # Aplicações em "pacote" (bundle) têm de ser removidas pelo pacote, não pela parte principal
@@ -659,13 +660,30 @@ foreach ($a in $AppsRemover) {
   foreach ($pk in $pacotes) {
     Marcar-Retirada $pk.PackageFamilyName
     try { Remove-AppxPackage -Package $pk.PackageFullName -AllUsers -ErrorAction Stop; $removida = $true }
-    catch { Aviso "Não foi possível remover $($pk.Name): $(($_.Exception.Message -split "`n")[0])" }
+    catch {
+      # Falha típica logo a seguir a apagar contas ("um utilizador terminou sessão"): o Windows
+      # ainda guarda a conta apagada. Remove-se então conta a conta, só nas contas que existem.
+      $falhou = $false
+      foreach ($ui in @($pk.PackageUserInformation)) {
+        $sidUi = $ui.UserSecurityId.Sid
+        if (-not $sidUi) { continue }
+        if (-not (Test-Path -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$sidUi")) { continue }
+        if ("$($ui.InstallState)" -notmatch 'Installed') { continue }
+        try { Remove-AppxPackage -Package $pk.PackageFullName -User $sidUi -ErrorAction Stop } catch { $falhou = $true }
+      }
+      if ($falhou) { if ($AppsPorRemover -notcontains $pk.Name) { $AppsPorRemover += $pk.Name } }
+      else { $removida = $true }
+    }
   }
   $Provisionadas | Where-Object { $_.DisplayName -like $a } | ForEach-Object {
     Marcar-Retirada "$($_.DisplayName)_$($_.PublisherId)"
     try { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -AllUsers -ErrorAction Stop | Out-Null; $removida = $true } catch {}
   }
   if ($removida) { Ok "Removida: $a" }
+}
+
+if ($AppsPorRemover.Count -gt 0) {
+  Aviso ('Ficaram por remover (reinicie e volte a correr o script): ' + ($AppsPorRemover -join ', '))
 }
 
 # Paint, Câmara e Teams: marcados como retirados mesmo que já não existam,
