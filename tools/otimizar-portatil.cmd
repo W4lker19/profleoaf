@@ -18,21 +18,24 @@ exit /b
 #  Limpeza e otimização automática dos portáteis Windows da escola.
 #
 #  Duplo clique no ficheiro. O Windows pede permissão de administrador.
-#  A única pergunta é a confirmação no início.
+#  A única pergunta é a confirmação no início (com a lista do que vai ser apagado).
 #
 #  O que faz:
-#   1. Limpa os ficheiros dos alunos: transferências antigas, instaladores e
+#   1. Deixa só as contas Administrador e Aluno: apaga as outras contas, as pastas
+#      delas e as pastas de contas abandonadas (mostra a lista antes de apagar)
+#   2. Limpa os ficheiros dos alunos: transferências antigas, instaladores e
 #      jogos descarregados, ficheiros temporários, cache dos browsers e reciclagem
-#   2. Limpa o sistema: temporários, cache do Windows Update, relatórios de erros
-#   3. Remove aplicações pré-instaladas desnecessárias (Xbox, Solitaire, notícias…)
-#   4. Desliga telemetria, sugestões, anúncios, widgets e aplicações em segundo plano
-#   5. Desliga efeitos visuais (animações, transparências) em todas as contas
-#   6. Ativa o Sensor de Armazenamento, que limpa sozinho daqui para a frente
-#   7. Instala as aplicações das aulas de TIC e CEA (Scratch, GIMP, Audacity,
-#      VLC, 7-Zip) e põe atalhos para o MakeCode (micro:bit) e o Microsoft 365
+#   3. Limpa o sistema: temporários, cache do Windows Update, relatórios de erros
+#   4. Remove aplicações do Windows que não fazem falta (Xbox, Solitaire, notícias,
+#      Paint, Fotografias, Câmara, Teams…) e impede que as atualizações as reinstalem
+#   5. Desliga telemetria, sugestões, anúncios e widgets; ativa o Sensor de Armazenamento
+#   6. Desliga efeitos visuais (animações, transparências) em todas as contas
+#   7. Instala o que os alunos precisam: Office (português), Chrome, Edge, Scratch,
+#      GIMP, Audacity, VLC e 7-Zip, e atalhos para o MakeCode e o Microsoft 365
+#   8. Resumo, com os programas que ocupam mais espaço
 #
-#  NÃO mexe em: Windows Update, Windows Defender, Microsoft Store, Office,
-#  Teams, OneDrive, nem nas pastas Documentos/Imagens dos alunos.
+#  NÃO mexe em: Windows Update, Windows Defender, Microsoft Store, Calculadora,
+#  OneDrive, nem nos Documentos/Imagens das contas que ficam.
 #  Pode ser corrido mais do que uma vez: só instala o que faltar.
 #  Registo de tudo o que foi feito em C:\ProgramData\OtimizarPortatil\
 # =============================================================================
@@ -44,6 +47,12 @@ $DiasTransferencias     = 7       # apaga das Transferências o que tiver mais d
 $DiasLimpezaAutomatica  = 14      # depois, o Windows limpa sozinho as Transferências com mais de 14 dias
 $LimpezaProfunda        = $true   # limpeza de componentes do Windows (DISM): liberta espaço, demora 10-30 min
 $ContasExcluidas        = @()     # contas cujos ficheiros NÃO são apagados, ex.: @('professor')
+
+# Contas: ficam SÓ estas. As outras contas, as pastas delas e as pastas abandonadas em C:\Users
+# são apagadas depois da confirmação. Por segurança, se alguma destas contas não existir no
+# portátil, não se apaga nenhuma conta. A conta com que o script está a correr nunca é apagada.
+$ContasManter           = @('Administrador', 'Aluno')
+$ApagarOutrasContas     = $true
 
 # Ficheiros apagados das Transferências seja qual for a data (instaladores, jogos, arquivos)
 $ExtensoesTransferencias = @('.exe', '.msi', '.msix', '.appx', '.iso', '.img', '.rar', '.7z', '.zip', '.apk', '.jar', '.torrent')
@@ -59,7 +68,8 @@ $PastasJogos = @(
   'AppData\Roaming\uTorrent',
   'AppData\Roaming\BitTorrent',
   'AppData\Local\Programs\Opera GX',
-  'AppData\Local\Programs\Opera'
+  'AppData\Local\Programs\Opera',
+  'AppData\Local\Microsoft\Teams'          # Teams clássico instalado na conta
 )
 
 # Aplicações pré-instaladas a remover (para todas as contas e para contas novas)
@@ -75,21 +85,61 @@ $AppsRemover = @(
   'Microsoft.549981C3F5F10', 'Microsoft.PowerAutomateDesktop', 'Microsoft.Todos',
   'Microsoft.Windows.DevHome', 'Microsoft.Copilot', 'Microsoft.BingSearch',
   'MicrosoftCorporationII.MicrosoftFamily',
+  'Microsoft.MSPaint',                       # Paint 3D (o Paint normal fica)
+  'Microsoft.Office.OneNote',                # OneNote antigo do Windows 10 (o do Office fica)
+  'Microsoft.WindowsCommunicationsApps',     # Correio e Calendário antigos
+  'Microsoft.OutlookForWindows',             # Outlook novo (os alunos usam o Outlook na web)
+  'Microsoft.WindowsAlarms', 'Microsoft.Messaging', 'Microsoft.OneConnect', 'Microsoft.Print3D',
+  'Microsoft.MicrosoftJournal', 'MicrosoftWindows.CrossDevice', 'Microsoft.Windows.Ai.Copilot.Provider',
+  'MicrosoftTeams',                          # chat pessoal do Windows 11
+  'MSTeams',                                 # Teams (os alunos usam o Teams na web, em office.com)
+  'Microsoft.Paint', 'Microsoft.Windows.Photos', 'Microsoft.WindowsCamera',
+  '*LinkedIn*', '*WhatsApp*', '*Amazon*', '*Booking*',
   '*CandyCrush*', '*BubbleWitch*', '*MarchofEmpires*', '*Disney*', '*Spotify*', '*TikTok*',
   '*Instagram*', '*Facebook*', '*Netflix*', '*Twitter*', '*ROBLOX*', '*Hulu*', '*PrimeVideo*',
   '*king.com*', '*Asphalt*', '*McAfee*', '*Norton*'
 )
-# Mantidas de propósito: Leitor Multimédia (ZuneMusic), Clipchamp (M365 Educação),
-# Dolby (som dos altifalantes) e Obter Ajuda (resolução de problemas do Windows 11).
+# Mantidas de propósito: Calculadora, Microsoft Store, Gravador de Som, Ferramenta de Recorte,
+# Bloco de Notas, Leitor Multimédia (ZuneMusic), Clipchamp (M365 Educação), Whiteboard,
+# Assistência Rápida, Dolby (som dos altifalantes) e Obter Ajuda (resolução de problemas).
+# As aplicações removidas ficam marcadas como "retiradas" no Windows, para as atualizações
+# não as voltarem a instalar.
 
 # Aplicações para as aulas (identificadores do winget). Só instala as que faltarem.
 $AppsInstalar = @(
+  @('Google.Chrome',         'Google Chrome'),
+  @('Microsoft.Edge',        'Microsoft Edge'),
   @('MITMediaLab.Scratch.3', 'Scratch 3'),
   @('GIMP.GIMP.3',           'GIMP'),
   @('Audacity.Audacity',     'Audacity'),
   @('VideoLAN.VLC',          'VLC'),
   @('7zip.7zip',             '7-Zip')
 )
+
+# Microsoft Office (Word, Excel, PowerPoint e OneNote) em português de Portugal.
+# Só é instalado se ainda não existir e se houver espaço livre suficiente (descarrega cerca de 3 GB).
+# Os alunos ativam-no ao entrar com a conta da escola.
+$InstalarOffice     = $true
+$EspacoMinimoOffice = 10GB
+$ConfigOffice = @'
+<Configuration>
+  <Add OfficeClientEdition="64" Channel="Current">
+    <Product ID="O365ProPlusRetail">
+      <Language ID="pt-pt" />
+      <ExcludeApp ID="Access" />
+      <ExcludeApp ID="Bing" />
+      <ExcludeApp ID="Groove" />
+      <ExcludeApp ID="Lync" />
+      <ExcludeApp ID="OneDrive" />
+      <ExcludeApp ID="Outlook" />
+      <ExcludeApp ID="Publisher" />
+      <ExcludeApp ID="Teams" />
+    </Product>
+  </Add>
+  <Updates Enabled="TRUE" />
+  <Display Level="None" AcceptEULA="TRUE" />
+</Configuration>
+'@
 
 # Atalhos na Área de Trabalho de todas as contas: "Nome|Endereço"
 $AtalhosWeb = @(
@@ -226,7 +276,133 @@ function Apagar-AtalhosPartidos([string]$pasta) {
   return $n
 }
 
+# Marca uma aplicação da Store como "retirada": as atualizações do Windows deixam de a reinstalar
+function Marcar-Retirada([string]$familia) {
+  if (-not $familia -or $familia -eq '_') { return }
+  $k = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\$familia"
+  if (-not (Test-Path -LiteralPath $k)) { New-Item -Path $k -Force | Out-Null }
+}
+
 # ----------------------------- INÍCIO ----------------------------------------
+
+Clear-Host
+
+# ----- Plano das contas: calculado antes da confirmação, para ser mostrado -----
+# SEGURANÇA: se alguma coisa não bater certo (conta que fica não encontrada, lista de perfis
+# ilegível ou incoerente), não se apaga NENHUMA conta.
+$PlanoContas = @()
+$AvisoContas = $null
+$ContasEmUso = @()
+$ContasFicam = @()
+if ($ApagarOutrasContas) {
+  Write-Host 'A verificar as contas deste portátil (pode demorar um minuto)...'
+  $Locais = @(Get-LocalUser -ErrorAction SilentlyContinue)
+  $Faltam = @($ContasManter | Where-Object { $n = $_; -not ($Locais | Where-Object { $_.Name -eq $n }) })
+
+  # Perfis segundo o WMI e segundo o registo do Windows (ProfileList)
+  try { $PerfisTodos = @(Get-CimInstance Win32_UserProfile -ErrorAction Stop | Where-Object { $_.LocalPath }) }
+  catch { $PerfisTodos = $null }
+  $ListaPerfis = @(Get-ChildItem -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList' -ErrorAction SilentlyContinue |
+    ForEach-Object {
+      $img = (Get-ItemProperty -LiteralPath $_.PSPath -ErrorAction SilentlyContinue).ProfileImagePath
+      if ($img) {
+        [pscustomobject]@{ Sid = ($_.PSChildName -replace '\.bak$', '')
+          Caminho = ([Environment]::ExpandEnvironmentVariables($img)).TrimEnd('\').ToLower() }
+      }
+    })
+  # Pastas cujo registo de utilizador (NTUSER.DAT) está aberto agora (conta com sessão aberta)
+  $HivesCarregadas = @()
+  $hl = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Control\hivelist' -ErrorAction SilentlyContinue
+  if ($hl) {
+    $HivesCarregadas = @($hl.PSObject.Properties |
+      Where-Object { $_.Name -like '\REGISTRY\USER\*' -and $_.Value -is [string] -and $_.Value -match '\\NTUSER\.DAT$' } |
+      ForEach-Object { (($_.Value -replace '^\\Device\\HarddiskVolume\d+', $env:SystemDrive) -replace '\\NTUSER\.DAT$', '').ToLower() })
+  }
+
+  if ($Locais.Count -eq 0 -or $Faltam.Count -gt 0) {
+    $AvisoContas = "Não encontrei a(s) conta(s) $($Faltam -join ', ') neste portátil. Por segurança, nenhuma conta vai ser apagada."
+  } elseif ($null -eq $PerfisTodos -or $PerfisTodos.Count -eq 0 -or $ListaPerfis.Count -eq 0) {
+    $AvisoContas = 'Não foi possível ler a lista de perfis do Windows. Por segurança, nenhuma conta vai ser apagada.'
+  } else {
+    $SidAtual = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $SidsManter = @($Locais | Where-Object { $ContasManter -contains $_.Name } | ForEach-Object { $_.SID.Value }) + @($SidAtual)
+    # Coerência: uma conta que fica e tem perfil no registo tem de aparecer também no WMI
+    $Incoerentes = @($SidsManter | Where-Object {
+      $s = $_
+      @($ListaPerfis | Where-Object { $_.Sid -eq $s }).Count -gt 0 -and @($PerfisTodos | Where-Object { $_.SID -eq $s }).Count -eq 0
+    })
+    if ($Incoerentes.Count -gt 0) {
+      $AvisoContas = 'A lista de perfis do Windows está incoerente. Por segurança, nenhuma conta vai ser apagada.'
+    } else {
+      $CaminhosManter = @($PerfisTodos | Where-Object { $SidsManter -contains $_.SID } | ForEach-Object { $_.LocalPath.TrimEnd('\').ToLower() }) +
+                        @($ListaPerfis | Where-Object { $SidsManter -contains $_.Sid } | ForEach-Object { $_.Caminho }) +
+                        @($env:USERPROFILE.TrimEnd('\').ToLower())
+      $PerfisNormais = @($PerfisTodos | Where-Object { -not $_.Special -and $_.LocalPath -like "$env:SystemDrive\Users\*" })
+
+      # Contas que ficam e a pasta de cada uma (mostrado na confirmação)
+      foreach ($n in $ContasManter) {
+        $u = $Locais | Where-Object { $_.Name -eq $n } | Select-Object -First 1
+        $pf = $ListaPerfis | Where-Object { $_.Sid -eq $u.SID.Value } | Select-Object -First 1
+        $ContasFicam += "$($u.Name) -> $(if ($pf) { $pf.Caminho } else { '(ainda sem pasta)' })"
+      }
+
+      # a) Contas locais a mais (nunca as contas internas do Windows: 500 a 504)
+      foreach ($u in $Locais) {
+        $sid = $u.SID.Value
+        if ($SidsManter -contains $sid -or $sid -match '-50[0-4]$') { continue }
+        $perfil = @($PerfisNormais | Where-Object { $_.SID -eq $sid }) | Select-Object -First 1
+        $PlanoContas += [pscustomobject]@{ Tipo = 'conta'; Nome = $u.Name; Sid = $sid; Perfil = $perfil
+          Caminho = $(if ($perfil) { $perfil.LocalPath } else { $null }) }
+      }
+      # b) Pastas de contas que não são locais (contas Microsoft ou da escola) ou cuja conta já não existe
+      foreach ($p in $PerfisNormais) {
+        if ($SidsManter -contains $p.SID) { continue }
+        if (@($PlanoContas | Where-Object { $_.Sid -eq $p.SID }).Count -gt 0) { continue }
+        $PlanoContas += [pscustomobject]@{ Tipo = 'perfil'; Nome = (Split-Path $p.LocalPath -Leaf); Sid = $p.SID; Perfil = $p; Caminho = $p.LocalPath }
+      }
+      # c) Pastas abandonadas: têm NTUSER.DAT mas não pertencem a nenhuma conta
+      #    (p. ex. "ALUNO.PC" quando o Windows criou um "Aluno.PC.000" novo)
+      $Ignorar = @('Public', 'Default', 'Default User', 'All Users', 'defaultuser0', 'defaultuser100000')
+      $Registados = @($PerfisTodos | ForEach-Object { $_.LocalPath.TrimEnd('\').ToLower() }) + @($ListaPerfis | ForEach-Object { $_.Caminho })
+      Get-ChildItem -LiteralPath (Join-Path $env:SystemDrive 'Users') -Force -Directory -ErrorAction SilentlyContinue |
+        Where-Object {
+          -not (E-Ligacao $_) -and $Ignorar -notcontains $_.Name -and
+          $Registados -notcontains $_.FullName.TrimEnd('\').ToLower() -and
+          (Test-Path -LiteralPath (Join-Path $_.FullName 'NTUSER.DAT'))
+        } | ForEach-Object {
+          $PlanoContas += [pscustomobject]@{ Tipo = 'pasta'; Nome = $_.Name; Sid = $null; Perfil = $null; Caminho = $_.FullName }
+        }
+
+      # Salvaguardas finais: nunca as pastas das contas que ficam, nunca uma pasta com o nome
+      # exato de uma conta que fica, nunca uma conta ou pasta com sessão aberta
+      $PlanoContas = @($PlanoContas | Where-Object {
+        -not $_.Caminho -or (
+          $CaminhosManter -notcontains $_.Caminho.TrimEnd('\').ToLower() -and
+          $ContasManter -notcontains (Split-Path $_.Caminho.TrimEnd('\') -Leaf))
+      })
+      foreach ($c in $PlanoContas) {
+        $c | Add-Member -NotePropertyName EmUso -NotePropertyValue ([bool](
+          ($c.Perfil -and $c.Perfil.Loaded) -or
+          ($c.Caminho -and $HivesCarregadas -contains $c.Caminho.TrimEnd('\').ToLower())))
+      }
+      $ContasEmUso = @($PlanoContas | Where-Object { $_.EmUso })
+      $PlanoContas = @($PlanoContas | Where-Object { -not $_.EmUso })
+
+      # Tamanho e data da última utilização de cada pasta, para a confirmação
+      foreach ($c in $PlanoContas) {
+        $c | Add-Member -NotePropertyName Bytes -NotePropertyValue ([long]0)
+        $c | Add-Member -NotePropertyName Data -NotePropertyValue ''
+        if ($c.Caminho -and (Test-Path -LiteralPath $c.Caminho)) {
+          $soma = (Listar-Ficheiros $c.Caminho | Measure-Object -Property Length -Sum).Sum
+          if ($soma) { $c.Bytes = [long]$soma }
+          $nt = Get-Item -LiteralPath (Join-Path $c.Caminho 'NTUSER.DAT') -Force -ErrorAction SilentlyContinue
+          if (-not $nt) { $nt = Get-Item -LiteralPath $c.Caminho -Force }
+          $c.Data = $nt.LastWriteTime.ToString('dd/MM/yyyy')
+        }
+      }
+    }
+  }
+}
 
 Clear-Host
 Write-Host '============================================================' -ForegroundColor Cyan
@@ -242,15 +418,30 @@ Write-Host '  - Instaladores (.exe, .msi, .iso) na Área de Trabalho'
 Write-Host '  - Jogos instalados pelos alunos (Roblox, Minecraft/TLauncher, Discord…)'
 Write-Host '  - Ficheiros temporários, cache dos browsers e Reciclagem'
 Write-Host '  Os ficheiros são apagados de vez (não vão para a Reciclagem).' -ForegroundColor Yellow
-Write-Host '  Se encontrar pastas de contas antigas que já não existem, pergunta antes de as apagar.'
 Write-Host ''
 Write-Host "Daqui para a frente, o Windows apaga sozinho, em todas as contas, o que estiver"
 Write-Host "nas Transferências há mais de $DiasLimpezaAutomatica dias."
 Write-Host ''
-Write-Host 'Os Documentos, Imagens e o OneDrive dos alunos NÃO são tocados.' -ForegroundColor Green
+Write-Host 'Nas contas que ficam, os Documentos, Imagens e o OneDrive NÃO são tocados.' -ForegroundColor Green
+Write-Host ''
+if ($AvisoContas) { Write-Host $AvisoContas -ForegroundColor Yellow }
+elseif ($ApagarOutrasContas -and $PlanoContas.Count -eq 0) { Write-Host ("Contas: só existem " + ($ContasManter -join ' e ') + '. Nenhuma conta vai ser apagada.') -ForegroundColor Green }
+elseif ($PlanoContas.Count -gt 0) {
+  Write-Host 'CONTAS QUE FICAM:' -ForegroundColor Green
+  foreach ($f in $ContasFicam) { Write-Host "  + $f" -ForegroundColor Green }
+  Write-Host 'CONTAS E PASTAS QUE VÃO SER APAGADAS:' -ForegroundColor Red
+  foreach ($c in $PlanoContas) {
+    $tipo = switch ($c.Tipo) { 'conta' { 'conta do Windows' } 'perfil' { 'pasta de outra conta' } default { 'pasta abandonada' } }
+    $info = if ($c.Data) { "$(Tamanho ([double]$c.Bytes)), último uso $($c.Data)" } else { 'sem pasta' }
+    Write-Host "  - $($c.Nome)  ($tipo; $info)" -ForegroundColor Red
+    if ($c.Caminho) { Write-Host "      $($c.Caminho)" -ForegroundColor Red }
+  }
+  Write-Host '  TUDO o que estas contas têm é apagado, incluindo Documentos e Imagens.' -ForegroundColor Red
+}
+foreach ($c in $ContasEmUso) { Write-Host "A conta $($c.Nome) tem uma sessão aberta e não vai ser apagada (termine a sessão e volte a correr)." -ForegroundColor Yellow }
 if ($ContasExcluidas.Count -gt 0) { Write-Host ('Contas excluídas: ' + ($ContasExcluidas -join ', ')) -ForegroundColor Green }
 Write-Host ''
-Write-Host 'Também instala Scratch, GIMP, Audacity, VLC e 7-Zip (precisa de internet).'
+Write-Host ('Também instala ' + $(if ($InstalarOffice) { 'Microsoft Office, ' } else { '' }) + (($AppsInstalar | ForEach-Object { $_[1] }) -join ', ') + ' (precisa de internet).')
 Write-Host 'Os browsers vão ser fechados. Pode demorar entre 10 e 60 minutos.'
 Write-Host ''
 
@@ -273,9 +464,37 @@ try {
   Aviso 'Restauro do Sistema desligado neste portátil (sem ponto de restauro)'
 }
 
-# ----------------------------- 1. FICHEIROS DOS ALUNOS -----------------------
+# ----------------------------- 1. CONTAS --------------------------------------
 
-Passo '1/7 A limpar os ficheiros das contas'
+Passo '1/8 A apagar as contas e pastas que não são precisas'
+[long]$ContasLibertado = 0
+if ($AvisoContas) { Aviso $AvisoContas }
+elseif (-not $ApagarOutrasContas) { Ok 'Apagar contas está desligado nas definições' }
+elseif ($PlanoContas.Count -eq 0) { Ok ('Só existem as contas ' + ($ContasManter -join ' e ')) }
+else {
+  foreach ($c in $PlanoContas) {
+    $antes = EspacoLivre
+    if ($c.Perfil) {
+      # Remove o perfil pelo Windows (apaga a pasta e o registo da conta)
+      try { $c.Perfil | Remove-CimInstance -ErrorAction Stop }
+      catch { Aviso "$($c.Nome): o Windows não removeu o perfil; a apagar a pasta diretamente" }
+    }
+    if ($c.Caminho -and (Test-Path -LiteralPath $c.Caminho)) { [void](Apagar-Pasta $c.Caminho) }
+    if ($c.Tipo -eq 'conta') {
+      try { Remove-LocalUser -SID $c.Sid -ErrorAction Stop }
+      catch { Aviso "Não foi possível apagar a conta $($c.Nome): $(($_.Exception.Message -split "`n")[0])" }
+    }
+    $libertado = [long][math]::Max(0, (EspacoLivre) - $antes)
+    $ContasLibertado += $libertado
+    if ($c.Caminho -and (Test-Path -LiteralPath $c.Caminho)) {
+      Aviso "$($c.Nome): ficaram ficheiros por apagar (em uso). Reinicie e volte a correr o script."
+    } else { Ok "$($c.Nome) apagada ($(Tamanho $libertado) libertados)" }
+  }
+}
+
+# ----------------------------- 2. FICHEIROS DOS ALUNOS -----------------------
+
+Passo '2/8 A limpar os ficheiros das contas'
 
 Stop-Process -Name chrome, msedge, firefox, opera, brave, Roblox*, Discord -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
@@ -361,34 +580,9 @@ Get-ChildItem -LiteralPath $rb -Force -Directory -ErrorAction SilentlyContinue |
   ForEach-Object { $bytesRb += Limpar-Pasta $_.FullName }
 Ok "Reciclagem esvaziada ($(Tamanho $bytesRb))"
 
-# Pastas de contas que já não existem (perfis antigos ou estragados, p. ex. "ALUNO.PC" quando
-# o Windows criou um "Aluno.PC.000" novo). Ocupam espaço e não são usadas por ninguém.
-# Só se consideram pastas com NTUSER.DAT que não pertencem a nenhuma conta do Windows.
-# Pergunta sempre antes de apagar.
-$Ignorar = @('Public', 'Default', 'Default User', 'All Users', 'defaultuser0', 'defaultuser100000')
-$Registados = @(Get-CimInstance Win32_UserProfile | Where-Object { $_.LocalPath } |
-  ForEach-Object { $_.LocalPath.TrimEnd('\').ToLower() })
-$Orfas = @(Get-ChildItem -LiteralPath (Join-Path $env:SystemDrive 'Users') -Force -Directory -ErrorAction SilentlyContinue |
-  Where-Object {
-    -not (E-Ligacao $_) -and $Ignorar -notcontains $_.Name -and
-    $Registados -notcontains $_.FullName.TrimEnd('\').ToLower() -and
-    (Test-Path -LiteralPath (Join-Path $_.FullName 'NTUSER.DAT'))
-  })
-foreach ($o in $Orfas) {
-  Write-Host '    A medir uma pasta de conta antiga...'
-  $t = (Listar-Ficheiros $o.FullName | Measure-Object -Property Length -Sum).Sum
-  Aviso "Pasta de uma conta que já não existe: $($o.Name) ($(Tamanho ([double]$t)), última alteração $($o.LastWriteTime.ToString('dd/MM/yyyy')))"
-  $r = Read-Host '    Apagar esta pasta e tudo o que tem dentro? (S/N)'
-  if ($r -match '^[sS]') {
-    $b = Apagar-Pasta $o.FullName
-    $TotalContas += $b
-    Ok "Pasta $($o.Name) apagada ($(Tamanho $b))"
-  } else { Ok "Pasta $($o.Name) mantida" }
-}
+# ----------------------------- 3. SISTEMA ------------------------------------
 
-# ----------------------------- 2. SISTEMA ------------------------------------
-
-Passo '2/7 A limpar o sistema'
+Passo '3/8 A limpar o sistema'
 
 $b = Limpar-Pasta (Join-Path $env:windir 'Temp')
 Ok "Temporários do Windows ($(Tamanho $b))"
@@ -414,9 +608,9 @@ if ($LimpezaProfunda) {
   else { Aviso "A limpeza de componentes não terminou (código $LASTEXITCODE). Normalmente é por haver uma atualização à espera de reinício; volte a correr depois de reiniciar." }
 }
 
-# ----------------------------- 3. APLICAÇÕES ---------------------------------
+# ----------------------------- 4. APLICAÇÕES ---------------------------------
 
-Passo '3/7 A remover aplicações desnecessárias'
+Passo '4/8 A remover aplicações desnecessárias'
 
 $Provisionadas = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
 foreach ($a in $AppsRemover) {
@@ -425,18 +619,45 @@ foreach ($a in $AppsRemover) {
   $pacotes = @(Get-AppxPackage -AllUsers -PackageTypeFilter Bundle -Name $a -ErrorAction SilentlyContinue)
   if ($pacotes.Count -eq 0) { $pacotes = @(Get-AppxPackage -AllUsers -Name $a -ErrorAction SilentlyContinue) }
   foreach ($pk in $pacotes) {
+    Marcar-Retirada $pk.PackageFamilyName
     try { Remove-AppxPackage -Package $pk.PackageFullName -AllUsers -ErrorAction Stop; $removida = $true }
     catch { Aviso "Não foi possível remover $($pk.Name): $(($_.Exception.Message -split "`n")[0])" }
   }
   $Provisionadas | Where-Object { $_.DisplayName -like $a } | ForEach-Object {
+    Marcar-Retirada "$($_.DisplayName)_$($_.PublisherId)"
     try { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -AllUsers -ErrorAction Stop | Out-Null; $removida = $true } catch {}
   }
   if ($removida) { Ok "Removida: $a" }
 }
 
-# ----------------------------- 4. DEFINIÇÕES DO SISTEMA ----------------------
+# Paint, Fotografias, Câmara e Teams: marcados como retirados mesmo que já não existam,
+# para as atualizações do Windows não os voltarem a instalar
+foreach ($nomePk in 'Microsoft.Paint', 'Microsoft.Windows.Photos', 'Microsoft.WindowsCamera', 'MSTeams', 'MicrosoftTeams') {
+  Marcar-Retirada "$($nomePk)_8wekyb3d8bbwe"
+}
 
-Passo '4/7 A desligar telemetria, sugestões e programas em segundo plano'
+# Teams clássico: o "Teams Machine-Wide Installer" volta a instalar o Teams em cada conta ao entrar
+foreach ($chave in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+                   'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*') {
+  Get-ItemProperty -Path $chave -ErrorAction SilentlyContinue |
+    Where-Object { $_.DisplayName -eq 'Teams Machine-Wide Installer' -and $_.PSChildName -match '^\{[0-9A-Fa-f-]+\}$' } |
+    ForEach-Object {
+      $pr = Start-Process -FilePath msiexec.exe -ArgumentList '/x', $_.PSChildName, '/qn', '/norestart' -Wait -PassThru
+      if ($pr.ExitCode -eq 0 -or $pr.ExitCode -eq 3010) { Ok 'Removido: Teams Machine-Wide Installer' }
+      else { Aviso "Teams Machine-Wide Installer: a desinstalação terminou com o código $($pr.ExitCode)" }
+    }
+}
+
+# Paint clássico (componente opcional em algumas versões do Windows)
+try {
+  Get-WindowsCapability -Online -ErrorAction Stop |
+    Where-Object { $_.Name -like 'Microsoft.Windows.MSPaint*' -and $_.State -eq 'Installed' } |
+    ForEach-Object { Remove-WindowsCapability -Online -Name $_.Name -ErrorAction Stop | Out-Null; Ok 'Removido: Paint clássico' }
+} catch {}
+
+# ----------------------------- 5. DEFINIÇÕES DO SISTEMA ----------------------
+
+Passo '5/8 A desligar telemetria, sugestões e programas em segundo plano'
 
 $Pol = 'HKLM:\SOFTWARE\Policies\Microsoft'
 # Telemetria
@@ -457,6 +678,8 @@ Definir-Registo "$Pol\Windows\Windows Feeds" 'EnableFeeds' 0
 Definir-Registo "$Pol\Windows\GameDVR" 'AllowGameDVR' 0
 # Copilot
 Definir-Registo "$Pol\Windows\WindowsCopilot" 'TurnOffWindowsCopilot' 1
+# Ícone do Chat/Teams na barra de tarefas do Windows 11 (3 = escondido)
+Definir-Registo "$Pol\Windows\Windows Chat" 'ChatIcon' 3
 # Edge e Chrome não ficam a correr depois de fechados
 Definir-Registo "$Pol\Edge" 'StartupBoostEnabled' 0
 Definir-Registo "$Pol\Edge" 'BackgroundModeEnabled' 0
@@ -500,9 +723,9 @@ foreach ($t in $TarefasDesligar) {
   }
 }
 
-# ----------------------------- 5. CONTAS (efeitos visuais e sugestões) ------
+# ----------------------------- 6. CONTAS (efeitos visuais e sugestões) ------
 
-Passo '5/7 A aplicar definições de desempenho em todas as contas'
+Passo '6/8 A aplicar definições de desempenho em todas as contas'
 
 # Definições por conta: chave, nome, tipo, valor
 $DefConta = @(
@@ -568,9 +791,9 @@ foreach ($h in $hives) {
   }
 }
 
-# ----------------------------- 6. APLICAÇÕES DAS AULAS -----------------------
+# ----------------------------- 7. APLICAÇÕES DAS AULAS -----------------------
 
-Passo '6/7 A instalar as aplicações das aulas (TIC e CEA)'
+Passo '7/8 A instalar as aplicações das aulas (TIC e CEA)'
 
 $AppsFalharam = @()
 $InstSoAdmin = @()
@@ -582,6 +805,7 @@ $WingetNaoArranca = -1073741515       # falta uma biblioteca do Windows ao winge
 function Versao-Pasta($pasta) { try { return [version](($pasta.Name -split '_')[1]) } catch { return [version]'0.0' } }
 
 $Winget = $null
+$catalogo = $false
 $cw = Get-Command winget.exe -ErrorAction SilentlyContinue
 if ($cw) { $Winget = $cw.Source }
 else {
@@ -656,6 +880,45 @@ if (-not $Winget) {
   }
 }
 
+# Microsoft Office
+if ($InstalarOffice) {
+  $c2r = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration' -ErrorAction SilentlyContinue
+  $wordExe = @("$env:ProgramFiles\Microsoft Office\root\Office16\WINWORD.EXE",
+               "${env:ProgramFiles(x86)}\Microsoft Office\root\Office16\WINWORD.EXE",
+               "$env:ProgramFiles\Microsoft Office\Office16\WINWORD.EXE",
+               "${env:ProgramFiles(x86)}\Microsoft Office\Office16\WINWORD.EXE") |
+             Where-Object { Test-Path -LiteralPath $_ }
+  if (($c2r -and $c2r.ProductReleaseIds) -or @($wordExe).Count -gt 0) {
+    Ok 'Microsoft Office já estava instalado'
+  } elseif (-not $Winget -or -not $catalogo) {
+    $AppsFalharam += 'Microsoft Office'
+  } elseif ((EspacoLivre) -lt $EspacoMinimoOffice) {
+    $AppsFalharam += 'Microsoft Office'
+    Aviso "Microsoft Office NÃO foi instalado: precisa de pelo menos $(Tamanho $EspacoMinimoOffice) livres e há $(Tamanho (EspacoLivre))."
+    Aviso 'Desinstale programas grandes que não se usam (ver a lista no resumo) e volte a correr o script.'
+  } else {
+    $xmlOffice = Join-Path $PastaRegisto 'office-ptpt.xml'
+    [IO.File]::WriteAllText($xmlOffice, $ConfigOffice, (New-Object Text.UTF8Encoding($false)))
+    Write-Host '    A instalar o Microsoft Office em português (descarrega cerca de 3 GB; pode demorar 20-60 min)...'
+    & $Winget install --id Microsoft.Office --exact --source winget --silent `
+        --accept-package-agreements --accept-source-agreements --override "/configure $xmlOffice"
+    $codigo = $LASTEXITCODE
+    if ($CodigosOk -notcontains $codigo) {
+      # Recurso: instalador oficial do Office (o do winget às vezes falha a verificação do ficheiro)
+      Write-Host '    A tentar com o instalador oficial da Microsoft...'
+      $setupOffice = Join-Path $PastaRegisto 'setup-office.exe'
+      try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri 'https://officecdn.microsoft.com/pr/wsus/setup.exe' -OutFile $setupOffice -UseBasicParsing -ErrorAction Stop
+        $pr = Start-Process -FilePath $setupOffice -ArgumentList '/configure', $xmlOffice -Wait -PassThru
+        $codigo = $pr.ExitCode
+      } catch { Aviso "Não foi possível descarregar o instalador oficial do Office: $(($_.Exception.Message -split "`n")[0])" }
+    }
+    if ($CodigosOk -contains $codigo) { Ok 'Microsoft Office instalado' }
+    else { $AppsFalharam += 'Microsoft Office'; Aviso "Microsoft Office NÃO foi instalado (código $codigo; verifique a internet)" }
+  }
+}
+
 # Atalhos web na Área de Trabalho de todas as contas
 $AreaPublica = [Environment]::GetFolderPath('CommonDesktopDirectory')
 foreach ($a in $AtalhosWeb) {
@@ -667,9 +930,9 @@ foreach ($a in $AtalhosWeb) {
   } catch { Aviso "Não foi possível criar o atalho $($partes[0])" }
 }
 
-# ----------------------------- 7. RESUMO -------------------------------------
+# ----------------------------- 8. RESUMO -------------------------------------
 
-Passo '7/7 Resumo'
+Passo '8/8 Resumo'
 $LivreDepois = EspacoLivre
 $Ganho = $LivreDepois - $LivreAntes
 $Duracao = [int]((Get-Date) - $Inicio).TotalMinutes
@@ -679,6 +942,7 @@ Write-Host '============================================================' -Foreg
 Write-Host "  Concluído em $Duracao min — $env:COMPUTERNAME" -ForegroundColor Green
 Write-Host "  Espaço livre antes:  $(Tamanho $LivreAntes)" -ForegroundColor Green
 Write-Host "  Espaço livre depois: $(Tamanho $LivreDepois)  (+$(Tamanho ([math]::Max($Ganho, 0))))" -ForegroundColor Green
+Write-Host "  Contas e pastas apagadas: $(Tamanho $ContasLibertado)" -ForegroundColor Green
 Write-Host "  Ficheiros das contas apagados: $(Tamanho $TotalContas)" -ForegroundColor Green
 Write-Host "  Registo: $Registo" -ForegroundColor Green
 Write-Host '============================================================' -ForegroundColor Green
@@ -686,6 +950,23 @@ if ($AppsFalharam.Count -gt 0) {
   Write-Host ''
   Write-Host ('Aplicações por instalar: ' + ($AppsFalharam -join ', ')) -ForegroundColor Yellow
   Write-Host 'Volte a correr o script com internet: só instala o que faltar.' -ForegroundColor Yellow
+}
+# Programas instalados que ocupam mais espaço (para decidir o que desinstalar)
+$Programas = foreach ($chave in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+                             'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*') {
+  Get-ItemProperty -Path $chave -ErrorAction SilentlyContinue |
+    Where-Object { $_.DisplayName -and $_.EstimatedSize -and -not $_.SystemComponent } |
+    ForEach-Object { [pscustomobject]@{ Nome = $_.DisplayName; Bytes = [double]$_.EstimatedSize * 1KB } }
+}
+$Maiores = @($Programas | Sort-Object Bytes -Descending | Select-Object -First 10)
+if ($Maiores.Count -gt 0) {
+  Write-Host ''
+  Write-Host 'Programas que ocupam mais espaço (Definições > Aplicações para desinstalar):'
+  foreach ($m in $Maiores) { Write-Host ('  {0,9}  {1}' -f (Tamanho $m.Bytes), $m.Nome) }
+}
+if ($LivreDepois -lt 10GB) {
+  Write-Host ''
+  Write-Host "ATENÇÃO: só há $(Tamanho $LivreDepois) livres. Abaixo de 10 GB o Windows fica lento e não instala atualizações." -ForegroundColor Yellow
 }
 if ($InstSoAdmin.Count -gt 0) {
   Write-Host ('Instaladas só para a conta atual (não há versão para todos): ' + ($InstSoAdmin -join ', ')) -ForegroundColor Yellow
