@@ -31,7 +31,8 @@ exit /b
 #   5. Desliga telemetria, sugestões, anúncios e widgets; ativa o Sensor de Armazenamento
 #   6. Desliga efeitos visuais (animações, transparências) em todas as contas
 #   7. Instala o que os alunos precisam: Office (português), Chrome, Edge, Scratch,
-#      GIMP, Audacity, VLC e 7-Zip, e atalhos para o MakeCode e o Microsoft 365
+#      GIMP, Audacity, VLC e 7-Zip, e atalhos para o MakeCode e o Microsoft 365;
+#      desinstala versões antigas (p. ex. GIMP 2) quando a nova já está instalada
 #   8. Resumo, com os programas que ocupam mais espaço
 #
 #  NÃO mexe em: Windows Update, Windows Defender, Microsoft Store, Fotografias, Calculadora,
@@ -140,6 +141,16 @@ $ConfigOffice = @'
   <Display Level="None" AcceptEULA="TRUE" />
 </Configuration>
 '@
+
+# Versões antigas a desinstalar, só se a versão nova já estiver instalada:
+# nome antigo (como aparece em Definições > Aplicações), nome da versão nova, identificador
+# do winget da versão nova (reinstalada por cima no fim, para repor atalhos e associações)
+$VersoesAntigas = @(
+  @('GIMP 2*',          'GIMP 3*',     'GIMP.GIMP.3'),
+  @('Scratch Desktop*', 'Scratch 3*',  'MITMediaLab.Scratch.3'),
+  @('Scratch 2*',       'Scratch 3*',  'MITMediaLab.Scratch.3'),
+  @('Audacity 2*',      'Audacity 3*', 'Audacity.Audacity')
+)
 
 # Atalhos na Área de Trabalho de todas as contas: "Nome|Endereço"
 $AtalhosWeb = @(
@@ -921,6 +932,70 @@ if ($InstalarOffice) {
     if ($CodigosOk -contains $codigo) { Ok 'Microsoft Office instalado' }
     else { $AppsFalharam += 'Microsoft Office'; Aviso "Microsoft Office NÃO foi instalado (código $codigo; verifique a internet)" }
   }
+}
+
+# Versões antigas: só se desinstalam com desinstaladores conhecidos e silenciosos
+# (nunca se abre uma janela de desinstalação que fique à espera de alguém)
+$ChavesDesinstalar = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+                     'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+function Programas-Instalados {
+  foreach ($k in $ChavesDesinstalar) {
+    Get-ItemProperty -Path $k -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName }
+  }
+}
+$Reparar = @()
+foreach ($va in $VersoesAntigas) {
+  $instalados = @(Programas-Instalados)
+  if (@($instalados | Where-Object { $_.DisplayName -like $va[1] }).Count -eq 0) { continue }   # a versão nova não está: não se toca na antiga
+  foreach ($antigo in @($instalados | Where-Object { $_.DisplayName -like $va[0] })) {
+    $nome = $antigo.DisplayName
+    $exe = $null; $argumentos = @()
+    if ($antigo.UninstallString -match '(?i)msiexec' -and $antigo.PSChildName -match '^\{[0-9A-Fa-f-]+\}$') {
+      $exe = 'msiexec.exe'; $argumentos = @('/x', $antigo.PSChildName, '/qn', '/norestart')
+    } elseif ($antigo.UninstallString) {
+      $us = $antigo.UninstallString.Trim()
+      $caminho = if ($us -match '^"([^"]+)"') { $Matches[1] } elseif ($us -match '^(.+?\.exe)') { $Matches[1] } else { $null }
+      if ($caminho -and (Test-Path -LiteralPath $caminho)) {
+        $leaf = Split-Path $caminho -Leaf
+        if ($leaf -match '(?i)^unins\d*\.exe$') { $exe = $caminho; $argumentos = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') }   # Inno Setup
+        elseif ($leaf -match '(?i)^uninst(all)?.*\.exe$') { $exe = $caminho; $argumentos = @('/S') }                                   # NSIS
+        if ($exe) {
+          # Mantém os argumentos que o próprio programa indica (p. ex. /allusers) e junta os de modo silencioso
+          $resto = $us.Substring($us.IndexOf($caminho) + $caminho.Length).Trim('"', ' ')
+          $argumentos = @($resto -split '\s+' | Where-Object { $_ }) + $argumentos
+        }
+      }
+    }
+    if (-not $exe) { Aviso "$($nome): versão antiga encontrada, mas sem desinstalação automática segura. Desinstale-a em Definições > Aplicações."; continue }
+    Write-Host "    A desinstalar a versão antiga: $nome..."
+    try {
+      $pr = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru -ErrorAction Stop
+      $null = $pr.Handle
+      [void]$pr.WaitForExit(600000)   # no máximo 10 minutos
+    } catch { Aviso "$($nome): não foi possível desinstalar ($(($_.Exception.Message -split "`n")[0]))"; continue }
+    # Alguns desinstaladores continuam em segundo plano: espera até 2 minutos que o programa desapareça
+    $saiu = $false
+    for ($i = 0; $i -lt 24 -and -not $saiu; $i++) {
+      $saiu = @(Programas-Instalados | Where-Object { $_.DisplayName -eq $nome }).Count -eq 0
+      if (-not $saiu) { Start-Sleep -Seconds 5 }
+    }
+    if ($saiu) { Ok "Versão antiga removida: $nome"; if ($Reparar -notcontains $va[2]) { $Reparar += $va[2] } }
+    else { Aviso "$($nome): a desinstalação não terminou. Confirme em Definições > Aplicações." }
+  }
+}
+# A desinstalação da versão antiga pode levar atalhos ou associações de ficheiros que a nova
+# também usava: reinstala a versão nova por cima para os repor
+foreach ($idRep in $Reparar) {
+  if (-not $Winget -or -not $catalogo) { Aviso "Não foi possível reparar $idRep (winget indisponível)"; continue }
+  Write-Host "    A repor os atalhos de $idRep..."
+  & $Winget install --id $idRep --exact --source winget --silent --force --scope machine `
+      --accept-package-agreements --accept-source-agreements
+  $codigo = $LASTEXITCODE
+  if ($codigo -eq $SemInstaladorMaquina) {
+    & $Winget install --id $idRep --exact --source winget --silent --force --accept-package-agreements --accept-source-agreements
+    $codigo = $LASTEXITCODE
+  }
+  if ($CodigosOk -contains $codigo) { Ok "Reposto: $idRep" } else { Aviso "Não foi possível repor $idRep (código $codigo)" }
 }
 
 # Atalhos web na Área de Trabalho de todas as contas
