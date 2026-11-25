@@ -22,7 +22,7 @@ exit /b
 #
 #  O que faz:
 #   1. Remove aplicações e programas que não fazem falta (Xbox, Solitaire, notícias,
-#      Paint, Câmara, Teams, OneDrive, LibreOffice, paint.net, Lenovo Vantage, .NET antigo…)
+#      Paint, Câmara, Teams, OneDrive, LibreOffice, paint.net, VLC, 7-Zip, Lenovo Vantage, .NET antigo…)
 #      e impede que as atualizações do Windows reinstalem as aplicações
 #   2. Deixa só as contas Administrador e Aluno: apaga as outras contas, as pastas
 #      delas e as pastas de contas abandonadas (mostra a lista antes de apagar)
@@ -32,7 +32,7 @@ exit /b
 #   5. Desliga telemetria, sugestões, anúncios e widgets; ativa o Sensor de Armazenamento
 #   6. Desliga efeitos visuais (animações, transparências) em todas as contas
 #   7. Instala (ou atualiza) o que os alunos precisam: Office (português), Chrome, Edge, Scratch,
-#      GIMP, Audacity, VLC e 7-Zip, e atalhos para o MakeCode e o Microsoft 365;
+#      GIMP e Audacity, e atalhos para o MakeCode e o Microsoft 365;
 #      desinstala versões antigas (p. ex. GIMP 2) quando a nova já está instalada
 #   8. Resumo, com os programas que ocupam mais espaço
 #
@@ -46,7 +46,7 @@ exit /b
 
 # Versão deste script (mostrada no site profleoaf.pt/tools, no arranque e no resumo).
 # Muda a cada alteração publicada: ano.mês.dia-número
-$VersaoScript = '2026.11.25-2'
+$VersaoScript = '2026.11.25-3'
 
 $PedirConfirmacao       = $true   # pergunta antes de começar
 $DiasTransferencias     = 7       # apaga das Transferências o que tiver mais de 7 dias
@@ -119,9 +119,7 @@ $AppsInstalar = @(
   @('Microsoft.Edge',        'Microsoft Edge'),
   @('MITMediaLab.Scratch.3', 'Scratch 3'),
   @('GIMP.GIMP.3',           'GIMP'),
-  @('Audacity.Audacity',     'Audacity'),
-  @('VideoLAN.VLC',          'VLC'),
-  @('7zip.7zip',             '7-Zip')
+  @('Audacity.Audacity',     'Audacity')
 )
 
 # Microsoft Office (Word, Excel, PowerPoint e OneNote) em português de Portugal.
@@ -163,6 +161,8 @@ $ProgramasRemover = @(
   'Microsoft Windows Desktop Runtime - 6.*',
   'Microsoft Windows Desktop Runtime - 7.*',
   'Lenovo System Update*',
+  'VLC media player*',                         # o Leitor Multimédia do Windows abre os mesmos formatos
+  '7-Zip*',                                    # o Windows 11 23H2 já abre .zip, .rar e .7z
   'Ligação ao ambiente de trabalho remoto*', 'Remote Desktop Connection*'
 )
 
