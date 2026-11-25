@@ -22,7 +22,8 @@ exit /b
 #
 #  O que faz:
 #   1. Remove aplicações e programas que não fazem falta (Xbox, Solitaire, notícias,
-#      Paint, Câmara, Teams, OneDrive, LibreOffice, paint.net, VLC, 7-Zip, Lenovo Vantage, .NET antigo…)
+#      Paint, Câmara, Teams, OneDrive, Clipchamp, Office, LibreOffice, paint.net, VLC, 7-Zip,
+#      Lenovo Vantage, .NET antigo…)
 #      e impede que as atualizações do Windows reinstalem as aplicações
 #   2. Deixa só as contas Administrador e Aluno: apaga as outras contas, as pastas
 #      delas e as pastas de contas abandonadas (mostra a lista antes de apagar)
@@ -31,8 +32,8 @@ exit /b
 #   4. Limpa o sistema: temporários, cache do Windows Update, relatórios de erros
 #   5. Desliga telemetria, sugestões, anúncios e widgets; ativa o Sensor de Armazenamento
 #   6. Desliga efeitos visuais (animações, transparências) em todas as contas
-#   7. Instala (ou atualiza) o que os alunos precisam: Office (português), Chrome, Edge, Scratch,
-#      GIMP e Audacity, e atalhos para o MakeCode e o Microsoft 365;
+#   7. Instala (ou atualiza) o que os alunos precisam: Chrome, Edge, Scratch, GIMP e Audacity,
+#      e atalhos para o MakeCode e o Microsoft 365 (Office online);
 #      desinstala versões antigas (p. ex. GIMP 2) quando a nova já está instalada
 #   8. Resumo, com os programas que ocupam mais espaço
 #
@@ -46,7 +47,7 @@ exit /b
 
 # Versão deste script (mostrada no site profleoaf.pt/tools, no arranque e no resumo).
 # Muda a cada alteração publicada: ano.mês.dia-número
-$VersaoScript = '2026.11.25-3'
+$VersaoScript = '2026.11.25-4'
 
 $PedirConfirmacao       = $true   # pergunta antes de começar
 $DiasTransferencias     = 7       # apaga das Transferências o que tiver mais de 7 dias
@@ -98,7 +99,7 @@ $AppsRemover = @(
   'Microsoft.WindowsAlarms', 'Microsoft.Messaging', 'Microsoft.OneConnect', 'Microsoft.Print3D',
   'Microsoft.MicrosoftJournal', 'MicrosoftWindows.CrossDevice', 'Microsoft.Windows.Ai.Copilot.Provider',
   'MicrosoftTeams',                          # chat pessoal do Windows 11
-  'Microsoft.MicrosoftStickyNotes', 'Microsoft.Edge.GameAssist',
+  'Microsoft.MicrosoftStickyNotes', 'Microsoft.Edge.GameAssist', 'Clipchamp.Clipchamp',
   'E046963F.LenovoCompanion',                # Lenovo Vantage (o Lenovo Hotkeys fica)
   'MSTeams',                                 # Teams (os alunos usam o Teams na web, em office.com)
   'Microsoft.Paint', 'Microsoft.WindowsCamera',
@@ -108,7 +109,7 @@ $AppsRemover = @(
   '*king.com*', '*Asphalt*', '*McAfee*', '*Norton*'
 )
 # Mantidas de propósito: Fotografias, Calculadora, Microsoft Store, Gravador de Som, Ferramenta de Recorte,
-# Bloco de Notas, Leitor Multimédia (ZuneMusic), Clipchamp (M365 Educação), Whiteboard,
+# Bloco de Notas, Leitor Multimédia (ZuneMusic), Whiteboard,
 # Assistência Rápida, Dolby (som dos altifalantes) e Obter Ajuda (resolução de problemas).
 # As aplicações removidas ficam marcadas como "retiradas" no Windows, para as atualizações
 # não as voltarem a instalar.
@@ -125,7 +126,11 @@ $AppsInstalar = @(
 # Microsoft Office (Word, Excel, PowerPoint e OneNote) em português de Portugal.
 # Só é instalado se ainda não existir e se houver espaço livre suficiente (descarrega cerca de 3 GB).
 # Os alunos ativam-no ao entrar com a conta da escola.
-$InstalarOffice     = $true
+$InstalarOffice     = $false
+# Remover o Office instalado no computador (Click-to-Run). Os alunos usam o Word, o PowerPoint
+# e o Excel online, pelo atalho Microsoft 365. Para voltar a instalar: $InstalarOffice = $true
+# e $RemoverOffice = $false.
+$RemoverOffice      = $true
 
 # Desinstalar a aplicação OneDrive do computador (os alunos usam o OneDrive na web).
 # Os ficheiros que já estão na pasta OneDrive de cada conta NÃO são apagados.
@@ -551,6 +556,7 @@ Write-Host "Daqui para a frente, o Windows apaga sozinho, em todas as contas, o 
 Write-Host "nas Transferências há mais de $DiasLimpezaAutomatica dias."
 Write-Host ''
 Write-Host 'Nas contas que ficam, os Documentos, Imagens e os ficheiros da pasta OneDrive NÃO são tocados.' -ForegroundColor Green
+if ($RemoverOffice) { Write-Host 'O Microsoft Office do computador é desinstalado (os alunos usam o Office online, em office.com).' }
 if ($RemoverOneDrive) {
   Write-Host 'A aplicação OneDrive é desinstalada (os alunos usam o OneDrive na web, em office.com).'
   if ($ContasComOneDrive.Count -gt 0) {
@@ -655,6 +661,28 @@ foreach ($padrao in @($ProgramasRemover | Where-Object { $PadroesNet -notcontain
   }
 }
 
+# Microsoft Office (Click-to-Run): remove todas as versões e idiomas com o instalador oficial
+if ($RemoverOffice) {
+  $c2r = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration' -ErrorAction SilentlyContinue
+  if ($c2r -and $c2r.ProductReleaseIds) {
+    Write-Host '    A desinstalar o Microsoft Office (pode demorar 10-20 min, não feche a janela)...'
+    Stop-Process -Name WINWORD, EXCEL, POWERPNT, ONENOTE, OUTLOOK, MSACCESS, MSPUB, lync -Force -ErrorAction SilentlyContinue
+    $xmlRem = Join-Path $PastaRegisto 'office-remover.xml'
+    [IO.File]::WriteAllText($xmlRem, '<Configuration><Remove All="TRUE" /><Property Name="FORCEAPPSHUTDOWN" Value="TRUE" /><Display Level="None" AcceptEULA="TRUE" /></Configuration>', (New-Object Text.UTF8Encoding($false)))
+    $setupRem = Join-Path $PastaRegisto 'setup-office.exe'
+    try {
+      [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+      Invoke-WebRequest -Uri 'https://officecdn.microsoft.com/pr/wsus/setup.exe' -OutFile $setupRem -UseBasicParsing -ErrorAction Stop
+      $pr = Start-Process -FilePath $setupRem -ArgumentList '/configure', $xmlRem -PassThru
+      $null = $pr.Handle
+      [void]$pr.WaitForExit(3600000)   # no máximo 1 hora
+      $c2rDepois = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration' -ErrorAction SilentlyContinue
+      if (-not ($c2rDepois -and $c2rDepois.ProductReleaseIds)) { Ok 'Removido: Microsoft Office' }
+      else { Aviso "O Microsoft Office não foi totalmente removido (código $($pr.ExitCode)). Reinicie e volte a correr o script." }
+    } catch { Aviso "Não foi possível remover o Office (sem acesso ao instalador da Microsoft): $(($_.Exception.Message -split "`n")[0])" }
+  }
+}
+
 # Que versões do .NET são usadas pelos programas que ficam? Cada programa que depende do .NET
 # instalado no Windows tem um ficheiro *.runtimeconfig.json com a versão de que precisa.
 # Os que trazem o seu próprio .NET ("includedFrameworks") não contam.
@@ -708,6 +736,7 @@ if ($AppsPorRemover.Count -gt 0) {
 foreach ($nomePk in 'Microsoft.Paint', 'Microsoft.WindowsCamera', 'MSTeams', 'MicrosoftTeams') {
   Marcar-Retirada "$($nomePk)_8wekyb3d8bbwe"
 }
+Marcar-Retirada 'Clipchamp.Clipchamp_yxz26nhyzhsrt'   # o Clipchamp tem outro editor
 # As Fotografias ficam: desfaz a marcação de uma versão anterior deste script, se existir
 Remove-Item -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.Windows.Photos_8wekyb3d8bbwe' -Force -ErrorAction SilentlyContinue
 
