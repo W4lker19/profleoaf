@@ -85,7 +85,7 @@ $AppsRemover = @(
   'Microsoft.549981C3F5F10', 'Microsoft.PowerAutomateDesktop', 'Microsoft.Todos',
   'Microsoft.Windows.DevHome', 'Microsoft.Copilot', 'Microsoft.BingSearch',
   'MicrosoftCorporationII.MicrosoftFamily',
-  'Microsoft.MSPaint',                       # Paint 3D (o Paint normal fica)
+  'Microsoft.MSPaint',                       # Paint 3D
   'Microsoft.Office.OneNote',                # OneNote antigo do Windows 10 (o do Office fica)
   'Microsoft.WindowsCommunicationsApps',     # Correio e Calendário antigos
   'Microsoft.OutlookForWindows',             # Outlook novo (os alunos usam o Outlook na web)
@@ -428,7 +428,7 @@ if ($AvisoContas) { Write-Host $AvisoContas -ForegroundColor Yellow }
 elseif ($ApagarOutrasContas -and $PlanoContas.Count -eq 0) { Write-Host ("Contas: só existem " + ($ContasManter -join ' e ') + '. Nenhuma conta vai ser apagada.') -ForegroundColor Green }
 elseif ($PlanoContas.Count -gt 0) {
   Write-Host 'CONTAS QUE FICAM:' -ForegroundColor Green
-  foreach ($f in $ContasFicam) { Write-Host "  + $f" -ForegroundColor Green }
+  foreach ($cf in $ContasFicam) { Write-Host "  + $cf" -ForegroundColor Green }
   Write-Host 'CONTAS E PASTAS QUE VÃO SER APAGADAS:' -ForegroundColor Red
   foreach ($c in $PlanoContas) {
     $tipo = switch ($c.Tipo) { 'conta' { 'conta do Windows' } 'perfil' { 'pasta de outra conta' } default { 'pasta abandonada' } }
@@ -910,7 +910,8 @@ if ($InstalarOffice) {
       try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -Uri 'https://officecdn.microsoft.com/pr/wsus/setup.exe' -OutFile $setupOffice -UseBasicParsing -ErrorAction Stop
-        $pr = Start-Process -FilePath $setupOffice -ArgumentList '/configure', $xmlOffice -Wait -PassThru
+        $pr = Start-Process -FilePath $setupOffice -ArgumentList '/configure', $xmlOffice -PassThru
+        $pr.WaitForExit()
         $codigo = $pr.ExitCode
       } catch { Aviso "Não foi possível descarregar o instalador oficial do Office: $(($_.Exception.Message -split "`n")[0])" }
     }
