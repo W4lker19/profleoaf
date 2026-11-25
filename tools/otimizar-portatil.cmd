@@ -242,6 +242,7 @@ Write-Host '  - Instaladores (.exe, .msi, .iso) na Área de Trabalho'
 Write-Host '  - Jogos instalados pelos alunos (Roblox, Minecraft/TLauncher, Discord…)'
 Write-Host '  - Ficheiros temporários, cache dos browsers e Reciclagem'
 Write-Host '  Os ficheiros são apagados de vez (não vão para a Reciclagem).' -ForegroundColor Yellow
+Write-Host '  Se encontrar pastas de contas antigas que já não existem, pergunta antes de as apagar.'
 Write-Host ''
 Write-Host "Daqui para a frente, o Windows apaga sozinho, em todas as contas, o que estiver"
 Write-Host "nas Transferências há mais de $DiasLimpezaAutomatica dias."
@@ -359,6 +360,31 @@ $bytesRb = 0
 Get-ChildItem -LiteralPath $rb -Force -Directory -ErrorAction SilentlyContinue |
   ForEach-Object { $bytesRb += Limpar-Pasta $_.FullName }
 Ok "Reciclagem esvaziada ($(Tamanho $bytesRb))"
+
+# Pastas de contas que já não existem (perfis antigos ou estragados, p. ex. "ALUNO.PC" quando
+# o Windows criou um "Aluno.PC.000" novo). Ocupam espaço e não são usadas por ninguém.
+# Só se consideram pastas com NTUSER.DAT que não pertencem a nenhuma conta do Windows.
+# Pergunta sempre antes de apagar.
+$Ignorar = @('Public', 'Default', 'Default User', 'All Users', 'defaultuser0', 'defaultuser100000')
+$Registados = @(Get-CimInstance Win32_UserProfile | Where-Object { $_.LocalPath } |
+  ForEach-Object { $_.LocalPath.TrimEnd('\').ToLower() })
+$Orfas = @(Get-ChildItem -LiteralPath (Join-Path $env:SystemDrive 'Users') -Force -Directory -ErrorAction SilentlyContinue |
+  Where-Object {
+    -not (E-Ligacao $_) -and $Ignorar -notcontains $_.Name -and
+    $Registados -notcontains $_.FullName.TrimEnd('\').ToLower() -and
+    (Test-Path -LiteralPath (Join-Path $_.FullName 'NTUSER.DAT'))
+  })
+foreach ($o in $Orfas) {
+  Write-Host '    A medir uma pasta de conta antiga...'
+  $t = (Listar-Ficheiros $o.FullName | Measure-Object -Property Length -Sum).Sum
+  Aviso "Pasta de uma conta que já não existe: $($o.Name) ($(Tamanho ([double]$t)), última alteração $($o.LastWriteTime.ToString('dd/MM/yyyy')))"
+  $r = Read-Host '    Apagar esta pasta e tudo o que tem dentro? (S/N)'
+  if ($r -match '^[sS]') {
+    $b = Apagar-Pasta $o.FullName
+    $TotalContas += $b
+    Ok "Pasta $($o.Name) apagada ($(Tamanho $b))"
+  } else { Ok "Pasta $($o.Name) mantida" }
+}
 
 # ----------------------------- 2. SISTEMA ------------------------------------
 
