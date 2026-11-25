@@ -46,7 +46,7 @@ exit /b
 
 # Versão deste script (mostrada no site profleoaf.pt/tools, no arranque e no resumo).
 # Muda a cada alteração publicada: ano.mês.dia-número
-$VersaoScript = '2026.11.25-1'
+$VersaoScript = '2026.11.25-2'
 
 $PedirConfirmacao       = $true   # pergunta antes de começar
 $DiasTransferencias     = 7       # apaga das Transferências o que tiver mais de 7 dias
@@ -393,6 +393,7 @@ $PlanoContas = @()
 $AvisoContas = $null
 $ContasEmUso = @()
 $ContasFicam = @()
+$MesmoNomeMantidas = @()
 if ($ApagarOutrasContas) {
   Write-Host 'A verificar as contas deste portátil (pode demorar um minuto)...'
   $Locais = @(Get-LocalUser -ErrorAction SilentlyContinue)
@@ -472,12 +473,25 @@ if ($ApagarOutrasContas) {
           $PlanoContas += [pscustomobject]@{ Tipo = 'pasta'; Nome = $_.Name; Sid = $null; Perfil = $null; Caminho = $_.FullName }
         }
 
-      # Salvaguardas finais: nunca as pastas das contas que ficam, nunca uma pasta com o nome
-      # exato de uma conta que fica, nunca uma conta ou pasta com sessão aberta
+      # Salvaguardas finais: nunca as pastas das contas que ficam, nunca uma conta ou pasta com
+      # sessão aberta, e uma pasta com o nome exato de uma conta que fica (p. ex. C:\Users\Aluno
+      # quando a Aluno atual usa Aluno.PC.000) só entra se for de uma conta LOCAL que já não existe
+      $PlanoContas = @($PlanoContas | Where-Object { -not $_.Caminho -or $CaminhosManter -notcontains $_.Caminho.TrimEnd('\').ToLower() })
+      $PrefixoMaquina = ($Locais[0].SID.Value -replace '-\d+$', '') + '-'
+      $SidsLocais = @($Locais | ForEach-Object { $_.SID.Value })
+      $MesmoNomeMantidas = @()
       $PlanoContas = @($PlanoContas | Where-Object {
-        -not $_.Caminho -or (
-          $CaminhosManter -notcontains $_.Caminho.TrimEnd('\').ToLower() -and
-          $ContasManter -notcontains (Split-Path $_.Caminho.TrimEnd('\') -Leaf))
+        if (-not $_.Caminho) { return $true }
+        if ($ContasManter -notcontains (Split-Path $_.Caminho.TrimEnd('\') -Leaf)) { return $true }
+        $contaApagada = $_.Sid -and $_.Sid.StartsWith($PrefixoMaquina) -and $SidsLocais -notcontains $_.Sid
+        if ($contaApagada) {
+          $_.Tipo = 'apagada'
+          return $true
+        }
+        $dono = 'desconhecida'
+        if ($_.Sid) { try { $dono = ([Security.Principal.SecurityIdentifier]$_.Sid).Translate([Security.Principal.NTAccount]).Value } catch {} }
+        $MesmoNomeMantidas += "$($_.Caminho) (conta: $dono)"
+        return $false
       })
       foreach ($c in $PlanoContas) {
         $c | Add-Member -NotePropertyName EmUso -NotePropertyValue ([bool](
@@ -553,12 +567,15 @@ elseif ($PlanoContas.Count -gt 0) {
   foreach ($cf in $ContasFicam) { Write-Host "  + $cf" -ForegroundColor Green }
   Write-Host 'CONTAS E PASTAS QUE VÃO SER APAGADAS:' -ForegroundColor Red
   foreach ($c in $PlanoContas) {
-    $tipo = switch ($c.Tipo) { 'conta' { 'conta do Windows' } 'perfil' { 'pasta de outra conta' } default { 'pasta abandonada' } }
+    $tipo = switch ($c.Tipo) { 'conta' { 'conta do Windows' } 'perfil' { 'pasta de outra conta' } 'apagada' { 'pasta de uma conta que já não existe' } default { 'pasta abandonada' } }
     $info = if ($c.Data) { "$(Tamanho ([double]$c.Bytes)), último uso $($c.Data)" } else { 'sem pasta' }
     Write-Host "  - $($c.Nome)  ($tipo; $info)" -ForegroundColor Red
     if ($c.Caminho) { Write-Host "      $($c.Caminho)" -ForegroundColor Red }
   }
   Write-Host '  TUDO o que estas contas têm é apagado, incluindo Documentos e Imagens.' -ForegroundColor Red
+}
+foreach ($mn in $MesmoNomeMantidas) {
+  Write-Host "Mantida por ter o nome de uma conta que fica (não é apagada): $mn" -ForegroundColor Yellow
 }
 foreach ($c in $ContasEmUso) { Write-Host "A conta $($c.Nome) tem uma sessão aberta e não vai ser apagada (termine a sessão e volte a correr)." -ForegroundColor Yellow }
 if ($ContasExcluidas.Count -gt 0) { Write-Host ('Contas excluídas: ' + ($ContasExcluidas -join ', ')) -ForegroundColor Green }
