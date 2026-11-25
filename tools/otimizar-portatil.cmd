@@ -22,7 +22,7 @@ exit /b
 #
 #  O que faz:
 #   1. Remove aplicações e programas que não fazem falta (Xbox, Solitaire, notícias,
-#      Paint, Câmara, Teams, OneDrive, Clipchamp, Office, LibreOffice, paint.net, VLC, 7-Zip,
+#      Paint, Câmara, Teams, OneDrive, Clipchamp, Office, LibreOffice, paint.net, VLC, 7-Zip, Audacity,
 #      Lenovo Vantage, .NET antigo…)
 #      e impede que as atualizações do Windows reinstalem as aplicações
 #   2. Deixa só as contas Administrador e Aluno: apaga as outras contas, as pastas
@@ -32,7 +32,7 @@ exit /b
 #   4. Limpa o sistema: temporários, cache do Windows Update, relatórios de erros
 #   5. Desliga telemetria, sugestões, anúncios e widgets; ativa o Sensor de Armazenamento
 #   6. Desliga efeitos visuais (animações, transparências) em todas as contas
-#   7. Instala (ou atualiza) o que os alunos precisam: Chrome, Edge, Scratch, GIMP e Audacity,
+#   7. Instala (ou atualiza) o que os alunos precisam: Chrome, Edge, Scratch e GIMP,
 #      e atalhos para o MakeCode e o Microsoft 365 (Office online);
 #      desinstala versões antigas (p. ex. GIMP 2) quando a nova já está instalada
 #   8. Resumo, com os programas que ocupam mais espaço
@@ -47,7 +47,7 @@ exit /b
 
 # Versão deste script (mostrada no site profleoaf.pt/tools, no arranque e no resumo).
 # Muda a cada alteração publicada: ano.mês.dia-número
-$VersaoScript = '2026.11.25-4'
+$VersaoScript = '2026.11.25-5'
 
 $PedirConfirmacao       = $true   # pergunta antes de começar
 $DiasTransferencias     = 7       # apaga das Transferências o que tiver mais de 7 dias
@@ -119,8 +119,7 @@ $AppsInstalar = @(
   @('Google.Chrome',         'Google Chrome'),
   @('Microsoft.Edge',        'Microsoft Edge'),
   @('MITMediaLab.Scratch.3', 'Scratch 3'),
-  @('GIMP.GIMP.3',           'GIMP'),
-  @('Audacity.Audacity',     'Audacity')
+  @('GIMP.GIMP.3',           'GIMP')
 )
 
 # Microsoft Office (Word, Excel, PowerPoint e OneNote) em português de Portugal.
@@ -168,6 +167,7 @@ $ProgramasRemover = @(
   'Lenovo System Update*',
   'VLC media player*',                         # o Leitor Multimédia do Windows abre os mesmos formatos
   '7-Zip*',                                    # o Windows 11 23H2 já abre .zip, .rar e .7z
+  'Audacity*',                                 # para gravar som fica o Gravador de Som do Windows
   'Ligação ao ambiente de trabalho remoto*', 'Remote Desktop Connection*'
 )
 
@@ -177,8 +177,7 @@ $ProgramasRemover = @(
 $VersoesAntigas = @(
   @('GIMP 2*',          'GIMP 3*',     'GIMP.GIMP.3'),
   @('Scratch Desktop*', 'Scratch 3*',  'MITMediaLab.Scratch.3'),
-  @('Scratch 2*',       'Scratch 3*',  'MITMediaLab.Scratch.3'),
-  @('Audacity 2*',      'Audacity 3*', 'Audacity.Audacity')
+  @('Scratch 2*',       'Scratch 3*',  'MITMediaLab.Scratch.3')
 )
 
 # Atalhos na Área de Trabalho de todas as contas: "Nome|Endereço"
