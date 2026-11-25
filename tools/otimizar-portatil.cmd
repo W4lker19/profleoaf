@@ -27,7 +27,7 @@ exit /b
 #      jogos descarregados, ficheiros temporários, cache dos browsers e reciclagem
 #   3. Limpa o sistema: temporários, cache do Windows Update, relatórios de erros
 #   4. Remove aplicações do Windows que não fazem falta (Xbox, Solitaire, notícias,
-#      Paint, Câmara, Teams…) e impede que as atualizações as reinstalem
+#      Paint, Câmara, Teams, OneDrive…) e impede que as atualizações as reinstalem
 #   5. Desliga telemetria, sugestões, anúncios e widgets; ativa o Sensor de Armazenamento
 #   6. Desliga efeitos visuais (animações, transparências) em todas as contas
 #   7. Instala o que os alunos precisam: Office (português), Chrome, Edge, Scratch,
@@ -36,7 +36,7 @@ exit /b
 #   8. Resumo, com os programas que ocupam mais espaço
 #
 #  NÃO mexe em: Windows Update, Windows Defender, Microsoft Store, Fotografias, Calculadora,
-#  OneDrive, nem nos Documentos/Imagens das contas que ficam.
+#  nem nos Documentos, Imagens e ficheiros da pasta OneDrive das contas que ficam.
 #  Pode ser corrido mais do que uma vez: só instala o que faltar.
 #  Registo de tudo o que foi feito em C:\ProgramData\OtimizarPortatil\
 # =============================================================================
@@ -121,6 +121,10 @@ $AppsInstalar = @(
 # Só é instalado se ainda não existir e se houver espaço livre suficiente (descarrega cerca de 3 GB).
 # Os alunos ativam-no ao entrar com a conta da escola.
 $InstalarOffice     = $true
+
+# Desinstalar a aplicação OneDrive do computador (os alunos usam o OneDrive na web).
+# Os ficheiros que já estão na pasta OneDrive de cada conta NÃO são apagados.
+$RemoverOneDrive    = $true
 $EspacoMinimoOffice = 10GB
 $ConfigOffice = @'
 <Configuration>
@@ -415,6 +419,20 @@ if ($ApagarOutrasContas) {
   }
 }
 
+# Contas que ficam e têm uma pasta OneDrive com ficheiros (para avisar antes da confirmação)
+$ContasComOneDrive = @()
+if ($RemoverOneDrive) {
+  $caminhosApagar = @($PlanoContas | Where-Object { $_.Caminho } | ForEach-Object { $_.Caminho.TrimEnd('\').ToLower() })
+  foreach ($p in @(Get-CimInstance Win32_UserProfile -ErrorAction SilentlyContinue |
+                   Where-Object { -not $_.Special -and $_.LocalPath -like "$env:SystemDrive\Users\*" })) {
+    if ($caminhosApagar -contains $p.LocalPath.TrimEnd('\').ToLower()) { continue }
+    $comFicheiros = @(Get-ChildItem -LiteralPath $p.LocalPath -Directory -Force -Filter 'OneDrive*' -ErrorAction SilentlyContinue |
+      Where-Object { Get-ChildItem -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue |
+                     Where-Object { $_.Name -ne 'desktop.ini' } | Select-Object -First 1 })
+    if ($comFicheiros.Count -gt 0) { $ContasComOneDrive += (Split-Path $p.LocalPath -Leaf) }
+  }
+}
+
 Clear-Host
 Write-Host '============================================================' -ForegroundColor Cyan
 Write-Host '  OTIMIZAR PORTÁTIL — limpeza e otimização do Windows' -ForegroundColor Cyan
@@ -433,7 +451,15 @@ Write-Host ''
 Write-Host "Daqui para a frente, o Windows apaga sozinho, em todas as contas, o que estiver"
 Write-Host "nas Transferências há mais de $DiasLimpezaAutomatica dias."
 Write-Host ''
-Write-Host 'Nas contas que ficam, os Documentos, Imagens e o OneDrive NÃO são tocados.' -ForegroundColor Green
+Write-Host 'Nas contas que ficam, os Documentos, Imagens e os ficheiros da pasta OneDrive NÃO são tocados.' -ForegroundColor Green
+if ($RemoverOneDrive) {
+  Write-Host 'A aplicação OneDrive é desinstalada (os alunos usam o OneDrive na web, em office.com).'
+  if ($ContasComOneDrive.Count -gt 0) {
+    Write-Host ('ATENÇÃO: ' + ($ContasComOneDrive -join ', ') + ' tem/têm ficheiros na pasta OneDrive.') -ForegroundColor Yellow
+    Write-Host '  Os ficheiros que estiverem só na nuvem (ícone de nuvem) deixam de abrir neste portátil;' -ForegroundColor Yellow
+    Write-Host '  continuam disponíveis no OneDrive na web. Alterações ainda não sincronizadas ficam só no portátil.' -ForegroundColor Yellow
+  }
+}
 Write-Host ''
 if ($AvisoContas) { Write-Host $AvisoContas -ForegroundColor Yellow }
 elseif ($ApagarOutrasContas -and $PlanoContas.Count -eq 0) { Write-Host ("Contas: só existem " + ($ContasManter -join ' e ') + '. Nenhuma conta vai ser apagada.') -ForegroundColor Green }
@@ -668,6 +694,39 @@ try {
     ForEach-Object { Remove-WindowsCapability -Online -Name $_.Name -ErrorAction Stop | Out-Null; Ok 'Removido: Paint clássico' }
 } catch {}
 
+# OneDrive: desinstala a aplicação (os ficheiros da pasta OneDrive de cada conta ficam)
+if ($RemoverOneDrive) {
+  Stop-Process -Name OneDrive, OneDriveSetup -Force -ErrorAction SilentlyContinue
+  function Correr-Desinstalador([string]$exe, [string[]]$argumentos) {
+    try {
+      $pr = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru -ErrorAction Stop
+      $null = $pr.Handle
+      [void]$pr.WaitForExit(300000)   # no máximo 5 minutos
+    } catch {}
+  }
+  # Instalação para todo o computador (Programas)
+  $odMaquina = Get-ChildItem -Path "$env:ProgramFiles\Microsoft OneDrive", "${env:ProgramFiles(x86)}\Microsoft OneDrive" `
+                 -Filter 'OneDriveSetup.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($odMaquina) { Correr-Desinstalador $odMaquina.FullName @('/uninstall', '/allusers') }
+  # Instalação na conta que está a correr o script
+  foreach ($odSetup in "$env:SystemRoot\System32\OneDriveSetup.exe", "$env:SystemRoot\SysWOW64\OneDriveSetup.exe") {
+    if (Test-Path -LiteralPath $odSetup) { Correr-Desinstalador $odSetup @('/uninstall'); break }
+  }
+  # Nas outras contas: só a pasta do PROGRAMA (AppData\Local\Microsoft\OneDrive), nunca a dos ficheiros
+  $bOd = [long]0
+  foreach ($p in @(Get-CimInstance Win32_UserProfile -ErrorAction SilentlyContinue |
+                   Where-Object { -not $_.Special -and $_.LocalPath -like "$env:SystemDrive\Users\*" -and -not $_.Loaded })) {
+    $bOd += Apagar-Pasta (Join-Path $p.LocalPath 'AppData\Local\Microsoft\OneDrive')
+  }
+  # Impede que o OneDrive volte a ser usado e tira-o do painel do Explorador de Ficheiros
+  Definir-Registo 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive' 'DisableFileSyncNGSC' 1
+  foreach ($clsid in 'Registry::HKEY_CLASSES_ROOT\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}',
+                     'Registry::HKEY_CLASSES_ROOT\Wow6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}') {
+    if (Test-Path -LiteralPath $clsid) { Set-ItemProperty -LiteralPath $clsid -Name 'System.IsPinnedToNameSpaceTree' -Value 0 -ErrorAction SilentlyContinue }
+  }
+  Ok "Aplicação OneDrive desinstalada e desligada ($(Tamanho $bOd) libertados nas outras contas; nas contas com sessão aberta termina no próximo início de sessão)"
+}
+
 # ----------------------------- 5. DEFINIÇÕES DO SISTEMA ----------------------
 
 Passo '5/8 A desligar telemetria, sugestões e programas em segundo plano'
@@ -770,10 +829,25 @@ $DefConta = @(
   @('Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', 'SubscribedContent-353696Enabled', 'REG_DWORD', '0')
 )
 
-function Aplicar-Conta([string]$raiz) {
+# Desinstalador do OneDrive por conta (System32 no Windows 11; SysWOW64 no Windows 10 de 64 bits)
+$odSetupConta = @("$env:SystemRoot\System32\OneDriveSetup.exe", "$env:SystemRoot\SysWOW64\OneDriveSetup.exe") |
+  Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+function Aplicar-Conta([string]$raiz, [bool]$modelo = $false) {
   foreach ($d in $DefConta) { Definir-RegistoConta $raiz $d[0] $d[1] $d[2] $d[3] }
   # Desfaz uma alteração da primeira versão deste script
   & reg.exe delete "$raiz\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications" /v GlobalUserDisabled /f 2>&1 | Out-Null
+  if ($RemoverOneDrive) {
+    # OneDrive: tira o arranque automático e a instalação automática em contas novas
+    & reg.exe delete "$raiz\Software\Microsoft\Windows\CurrentVersion\Run" /v OneDrive /f 2>&1 | Out-Null
+    & reg.exe delete "$raiz\Software\Microsoft\Windows\CurrentVersion\Run" /v OneDriveSetup /f 2>&1 | Out-Null
+    & reg.exe delete "$raiz\Software\Microsoft\Windows\CurrentVersion\Uninstall\OneDriveSetup.exe" /f 2>&1 | Out-Null
+    if (-not $modelo -and $odSetupConta) {
+      # Desinstala o OneDrive desta conta no próximo início de sessão (o desinstalador só
+      # consegue retirar a cópia da conta que o corre)
+      & reg.exe add "$raiz\Software\Microsoft\Windows\CurrentVersion\RunOnce" /v DesinstalarOneDrive /t REG_SZ `
+          /d "$odSetupConta /uninstall" /f 2>&1 | Out-Null
+    }
+  }
 }
 
 # Contas existentes (as que têm sessão aberta já estão carregadas; as outras carregam-se e descarregam-se)
@@ -791,7 +865,7 @@ foreach ($h in $hives) {
     $tmp = 'HKU\OtimizarTmp' + [guid]::NewGuid().ToString('N').Substring(0, 8)
     & reg.exe load $tmp $h.Ficheiro 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
-      Aplicar-Conta $tmp
+      Aplicar-Conta $tmp ($null -eq $h.Sid)
       $descarregada = $false
       for ($i = 0; $i -lt 5 -and -not $descarregada; $i++) {
         [gc]::Collect(); [gc]::WaitForPendingFinalizers(); Start-Sleep -Seconds 1
