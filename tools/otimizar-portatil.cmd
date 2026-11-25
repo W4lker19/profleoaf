@@ -21,8 +21,9 @@ exit /b
 #  A única pergunta é a confirmação no início (com a lista do que vai ser apagado).
 #
 #  O que faz:
-#   1. Remove aplicações do Windows que não fazem falta (Xbox, Solitaire, notícias,
-#      Paint, Câmara, Teams, OneDrive…) e impede que as atualizações as reinstalem
+#   1. Remove aplicações e programas que não fazem falta (Xbox, Solitaire, notícias,
+#      Paint, Câmara, Teams, OneDrive, LibreOffice, paint.net, Lenovo Vantage, .NET antigo…)
+#      e impede que as atualizações do Windows reinstalem as aplicações
 #   2. Deixa só as contas Administrador e Aluno: apaga as outras contas, as pastas
 #      delas e as pastas de contas abandonadas (mostra a lista antes de apagar)
 #   3. Limpa os ficheiros dos alunos: transferências antigas, instaladores e
@@ -30,7 +31,7 @@ exit /b
 #   4. Limpa o sistema: temporários, cache do Windows Update, relatórios de erros
 #   5. Desliga telemetria, sugestões, anúncios e widgets; ativa o Sensor de Armazenamento
 #   6. Desliga efeitos visuais (animações, transparências) em todas as contas
-#   7. Instala o que os alunos precisam: Office (português), Chrome, Edge, Scratch,
+#   7. Instala (ou atualiza) o que os alunos precisam: Office (português), Chrome, Edge, Scratch,
 #      GIMP, Audacity, VLC e 7-Zip, e atalhos para o MakeCode e o Microsoft 365;
 #      desinstala versões antigas (p. ex. GIMP 2) quando a nova já está instalada
 #   8. Resumo, com os programas que ocupam mais espaço
@@ -93,6 +94,8 @@ $AppsRemover = @(
   'Microsoft.WindowsAlarms', 'Microsoft.Messaging', 'Microsoft.OneConnect', 'Microsoft.Print3D',
   'Microsoft.MicrosoftJournal', 'MicrosoftWindows.CrossDevice', 'Microsoft.Windows.Ai.Copilot.Provider',
   'MicrosoftTeams',                          # chat pessoal do Windows 11
+  'Microsoft.MicrosoftStickyNotes', 'Microsoft.Edge.GameAssist',
+  'E046963F.LenovoCompanion',                # Lenovo Vantage (o Lenovo Hotkeys fica)
   'MSTeams',                                 # Teams (os alunos usam o Teams na web, em office.com)
   'Microsoft.Paint', 'Microsoft.WindowsCamera',
   '*LinkedIn*', '*WhatsApp*', '*Amazon*', '*Booking*',
@@ -145,6 +148,19 @@ $ConfigOffice = @'
   <Display Level="None" AcceptEULA="TRUE" />
 </Configuration>
 '@
+
+# Programas do computador a desinstalar (nome como aparece em Definições > Aplicações).
+# Só com desinstaladores silenciosos conhecidos; os outros ficam com um aviso.
+$ProgramasRemover = @(
+  'LibreOffice*',
+  'paint.net*',
+  'Microsoft Windows Desktop Runtime - 5.*',   # .NET 5, 6 e 7: sem suporte da Microsoft
+  'Microsoft Windows Desktop Runtime - 6.*',
+  'Microsoft Windows Desktop Runtime - 7.*',
+  'Lenovo Vantage Service*',
+  'Lenovo System Update*',
+  'Ligação ao ambiente de trabalho remoto*', 'Remote Desktop Connection*'
+)
 
 # Versões antigas a desinstalar, só se a versão nova já estiver instalada:
 # nome antigo (como aparece em Definições > Aplicações), nome da versão nova, identificador
@@ -296,6 +312,70 @@ function Marcar-Retirada([string]$familia) {
   if (-not $familia -or $familia -eq '_') { return }
   $k = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\$familia"
   if (-not (Test-Path -LiteralPath $k)) { New-Item -Path $k -Force | Out-Null }
+}
+
+# Programas instalados no computador (chaves de desinstalação do Windows)
+$ChavesDesinstalar = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+                     'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+function Programas-Instalados {
+  foreach ($k in $ChavesDesinstalar) {
+    Get-ItemProperty -Path $k -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName }
+  }
+}
+
+# Separa um comando em programa + argumentos
+function Separar-Comando([string]$cmd) {
+  $cmd = $cmd.Trim()
+  $c = if ($cmd -match '^"([^"]+)"') { $Matches[1] } elseif ($cmd -match '^(.+?\.exe)') { $Matches[1] } else { $null }
+  if (-not $c) { return $null }
+  $resto = $cmd.Substring($cmd.IndexOf($c) + $c.Length).Trim('"', ' ')
+  return @{ Exe = $c; Args = @($resto -split '\s+' | Where-Object { $_ }) }
+}
+
+# Desinstala um programa SÓ com desinstaladores silenciosos conhecidos (MSI, Inno Setup, NSIS,
+# pacotes .NET) ou com o comando silencioso que o próprio programa indica. Nunca abre uma janela
+# que fique à espera de alguém. Devolve $true se o programa desapareceu da lista.
+function Desinstalar-Programa($entrada) {
+  $nome = $entrada.DisplayName
+  $exe = $null; $argumentos = @()
+  $guid = if ($entrada.PSChildName -match '^\{[0-9A-Fa-f-]+\}$') { $entrada.PSChildName } else { $null }
+  if ($entrada.UninstallString -match '(?i)msiexec' -and $guid) {
+    $exe = 'msiexec.exe'; $argumentos = @('/x', $guid, '/qn', '/norestart')
+  } elseif ($entrada.QuietUninstallString) {
+    $sc = Separar-Comando $entrada.QuietUninstallString
+    if ($sc -and (Test-Path -LiteralPath $sc.Exe)) {
+      $exe = $sc.Exe
+      # Inno Setup: o comando "silencioso" do próprio programa (/SILENT) ainda pode abrir mensagens
+      if ((Split-Path $sc.Exe -Leaf) -match '(?i)^unins\d*\.exe$') { $argumentos = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') }
+      else { $argumentos = $sc.Args }
+    }
+  }
+  if (-not $exe -and $entrada.UninstallString) {
+    $sc = Separar-Comando $entrada.UninstallString
+    if ($sc -and (Test-Path -LiteralPath $sc.Exe)) {
+      $leaf = Split-Path $sc.Exe -Leaf
+      $silencio = $null
+      if ($leaf -match '(?i)^unins\d*\.exe$') { $silencio = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') }      # Inno Setup
+      elseif ($leaf -match '(?i)^uninst(all)?.*\.exe$') { $silencio = @('/S') }                                      # NSIS
+      elseif ($sc.Exe -match '(?i)\\Package Cache\\' -and $sc.Args -contains '/uninstall') { $silencio = @('/quiet', '/norestart') }   # pacotes .NET
+      if ($silencio) { $exe = $sc.Exe; $argumentos = @($sc.Args) + $silencio }
+    }
+  }
+  if (-not $exe) { Aviso "$($nome): sem desinstalação automática segura. Desinstale-o em Definições > Aplicações."; return $false }
+  Write-Host "    A desinstalar: $nome..."
+  try {
+    $pr = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru -ErrorAction Stop
+    $null = $pr.Handle
+    [void]$pr.WaitForExit(600000)   # no máximo 10 minutos
+  } catch { Aviso "$($nome): não foi possível desinstalar ($(($_.Exception.Message -split "`n")[0]))"; return $false }
+  # Alguns desinstaladores continuam em segundo plano: espera até 2 minutos que o programa desapareça
+  $saiu = $false
+  for ($i = 0; $i -lt 24 -and -not $saiu; $i++) {
+    $saiu = @(Programas-Instalados | Where-Object { $_.DisplayName -eq $nome }).Count -eq 0
+    if (-not $saiu) { Start-Sleep -Seconds 5 }
+  }
+  if ($saiu) { Ok "Removido: $nome" } else { Aviso "$($nome): a desinstalação não terminou. Confirme em Definições > Aplicações." }
+  return $saiu
 }
 
 # ----------------------------- INÍCIO ----------------------------------------
@@ -542,6 +622,59 @@ foreach ($a in $AppsRemover) {
     try { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -AllUsers -ErrorAction Stop | Out-Null; $removida = $true } catch {}
   }
   if ($removida) { Ok "Removida: $a" }
+}
+
+# Programas do computador que não fazem falta (LibreOffice, paint.net, Lenovo…).
+# O .NET fica para o fim: só sai depois de confirmar que nenhum programa que fica precisa dele.
+$PadroesNet = @($ProgramasRemover | Where-Object { $_ -like 'Microsoft Windows Desktop Runtime*' })
+foreach ($padrao in @($ProgramasRemover | Where-Object { $PadroesNet -notcontains $_ })) {
+  foreach ($prog in @(Programas-Instalados | Where-Object { $_.DisplayName -like $padrao -and -not $_.SystemComponent })) {
+    [void](Desinstalar-Programa $prog)
+  }
+}
+
+# Que versões do .NET são usadas pelos programas que ficam? Cada programa que depende do .NET
+# instalado no Windows tem um ficheiro *.runtimeconfig.json com a versão de que precisa.
+# Os que trazem o seu próprio .NET ("includedFrameworks") não contam.
+if ($PadroesNet.Count -gt 0) {
+  Write-Host '    A verificar se algum programa precisa do .NET 5, 6 ou 7 (pode demorar um minuto)...'
+  $PastasProgramas = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramData) +
+    @(Get-ChildItem -LiteralPath (Join-Path $env:SystemDrive 'Users') -Directory -Force -ErrorAction SilentlyContinue |
+      ForEach-Object { Join-Path $_.FullName 'AppData\Local\Programs' })
+  $NetUsado = @{}   # versão principal -> programas que a usam
+  foreach ($pasta in $PastasProgramas) {
+    if (-not $pasta -or -not (Test-Path -LiteralPath $pasta)) { continue }
+    foreach ($rc in @(Get-ChildItem -LiteralPath $pasta -Filter '*.runtimeconfig.json' -Recurse -File -Force -ErrorAction SilentlyContinue)) {
+      if ($rc.FullName -like (Join-Path $pasta 'dotnet\*')) { continue }   # a própria pasta do .NET não conta
+      try { $j = Get-Content -LiteralPath $rc.FullName -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+      if (-not $j.runtimeOptions -or $j.runtimeOptions.includedFrameworks) { continue }
+      $fws = @($j.runtimeOptions.framework) + @($j.runtimeOptions.frameworks) | Where-Object { $_ -and $_.version }
+      # Com rollForward Major/LatestMajor o programa pode estar a usar uma versão mais recente
+      $rf = "$($j.runtimeOptions.rollForward)"
+      $prog = ($rc.FullName.Substring($pasta.Length).TrimStart('\') -split '\\')[0]
+      foreach ($fw in $fws) {
+        if ($fw.name -notmatch '^Microsoft\.(NETCore|WindowsDesktop)\.App$') { continue }
+        $alvo = 0
+        if (-not [int]::TryParse((($fw.version -split '\.')[0]), [ref]$alvo)) { continue }
+        $majores = if ($rf -match '^(Major|LatestMajor)$' -and $alvo -lt 7) { $alvo..7 } else { @($alvo) }
+        foreach ($m in $majores) {
+          $k = "$m"
+          if (-not $NetUsado.ContainsKey($k)) { $NetUsado[$k] = @() }
+          if ($NetUsado[$k] -notcontains $prog) { $NetUsado[$k] += $prog }
+        }
+      }
+    }
+  }
+  foreach ($padrao in $PadroesNet) {
+    $maior = if ($padrao -match '- (\d+)\.') { $Matches[1] } else { $null }
+    $entradas = @(Programas-Instalados | Where-Object { $_.DisplayName -like $padrao -and -not $_.SystemComponent })
+    if ($entradas.Count -eq 0) { continue }
+    if ($maior -and $NetUsado.ContainsKey($maior)) {
+      Ok ".NET $maior mantido: é usado por $($NetUsado[$maior] -join ', ')"
+      continue
+    }
+    foreach ($prog in $entradas) { [void](Desinstalar-Programa $prog) }
+  }
 }
 
 if ($AppsPorRemover.Count -gt 0) {
@@ -975,7 +1108,16 @@ if (-not $Winget) {
       $AppsFalharam = @($AppsInstalar | ForEach-Object { $_[1] })
       break
     }
-    if ($codigo -eq 0) { Ok "$nomeApp já estava instalado"; continue }
+    if ($codigo -eq 0) {
+      if ($id -eq 'Microsoft.Edge') { Ok "$nomeApp já estava instalado (atualiza-se sozinho)"; continue }
+      # Já instalado: atualiza para a versão mais recente (as versões antigas têm falhas de segurança)
+      & $Winget upgrade --id $id --exact --source winget --silent --accept-package-agreements --accept-source-agreements
+      $cu = $LASTEXITCODE
+      if ($cu -eq 0) { Ok "$nomeApp atualizado" }
+      elseif ($CodigosOk -contains $cu -or $cu -eq -1978335212) { Ok "$nomeApp já estava atualizado" }
+      else { Aviso "$($nomeApp): não foi possível atualizar (código $cu)" }
+      continue
+    }
 
     Write-Host "    A instalar $nomeApp..."
     & $Winget install --id $id --exact --source winget --silent --scope machine `
@@ -1034,53 +1176,13 @@ if ($InstalarOffice) {
   }
 }
 
-# Versões antigas: só se desinstalam com desinstaladores conhecidos e silenciosos
-# (nunca se abre uma janela de desinstalação que fique à espera de alguém)
-$ChavesDesinstalar = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
-                     'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
-function Programas-Instalados {
-  foreach ($k in $ChavesDesinstalar) {
-    Get-ItemProperty -Path $k -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName }
-  }
-}
+# Versões antigas: só se desinstalam se a versão nova estiver instalada
 $Reparar = @()
 foreach ($va in $VersoesAntigas) {
   $instalados = @(Programas-Instalados)
   if (@($instalados | Where-Object { $_.DisplayName -like $va[1] }).Count -eq 0) { continue }   # a versão nova não está: não se toca na antiga
   foreach ($antigo in @($instalados | Where-Object { $_.DisplayName -like $va[0] })) {
-    $nome = $antigo.DisplayName
-    $exe = $null; $argumentos = @()
-    if ($antigo.UninstallString -match '(?i)msiexec' -and $antigo.PSChildName -match '^\{[0-9A-Fa-f-]+\}$') {
-      $exe = 'msiexec.exe'; $argumentos = @('/x', $antigo.PSChildName, '/qn', '/norestart')
-    } elseif ($antigo.UninstallString) {
-      $us = $antigo.UninstallString.Trim()
-      $caminho = if ($us -match '^"([^"]+)"') { $Matches[1] } elseif ($us -match '^(.+?\.exe)') { $Matches[1] } else { $null }
-      if ($caminho -and (Test-Path -LiteralPath $caminho)) {
-        $leaf = Split-Path $caminho -Leaf
-        if ($leaf -match '(?i)^unins\d*\.exe$') { $exe = $caminho; $argumentos = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') }   # Inno Setup
-        elseif ($leaf -match '(?i)^uninst(all)?.*\.exe$') { $exe = $caminho; $argumentos = @('/S') }                                   # NSIS
-        if ($exe) {
-          # Mantém os argumentos que o próprio programa indica (p. ex. /allusers) e junta os de modo silencioso
-          $resto = $us.Substring($us.IndexOf($caminho) + $caminho.Length).Trim('"', ' ')
-          $argumentos = @($resto -split '\s+' | Where-Object { $_ }) + $argumentos
-        }
-      }
-    }
-    if (-not $exe) { Aviso "$($nome): versão antiga encontrada, mas sem desinstalação automática segura. Desinstale-a em Definições > Aplicações."; continue }
-    Write-Host "    A desinstalar a versão antiga: $nome..."
-    try {
-      $pr = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru -ErrorAction Stop
-      $null = $pr.Handle
-      [void]$pr.WaitForExit(600000)   # no máximo 10 minutos
-    } catch { Aviso "$($nome): não foi possível desinstalar ($(($_.Exception.Message -split "`n")[0]))"; continue }
-    # Alguns desinstaladores continuam em segundo plano: espera até 2 minutos que o programa desapareça
-    $saiu = $false
-    for ($i = 0; $i -lt 24 -and -not $saiu; $i++) {
-      $saiu = @(Programas-Instalados | Where-Object { $_.DisplayName -eq $nome }).Count -eq 0
-      if (-not $saiu) { Start-Sleep -Seconds 5 }
-    }
-    if ($saiu) { Ok "Versão antiga removida: $nome"; if ($Reparar -notcontains $va[2]) { $Reparar += $va[2] } }
-    else { Aviso "$($nome): a desinstalação não terminou. Confirme em Definições > Aplicações." }
+    if (Desinstalar-Programa $antigo) { if ($Reparar -notcontains $va[2]) { $Reparar += $va[2] } }
   }
 }
 # A desinstalação da versão antiga pode levar atalhos ou associações de ficheiros que a nova
