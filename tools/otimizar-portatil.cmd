@@ -205,7 +205,7 @@ function Tamanho($bytes) {
   return '{0:N0} MB' -f ($bytes / 1MB)
 }
 
-function EspacoLivre { return (Get-PSDrive -Name ($env:SystemDrive.TrimEnd(':'))).Free }
+function EspacoLivre { return [long](Get-PSDrive -Name ($env:SystemDrive.TrimEnd(':'))).Free }
 
 # SEGURANÇA: nenhuma função abaixo entra em junções ou ligações simbólicas
 # (pastas que "apontam" para outro sítio, p. ex. para os Documentos).
@@ -521,7 +521,8 @@ else {
       try { Remove-LocalUser -SID $c.Sid -ErrorAction Stop }
       catch { Aviso "Não foi possível apagar a conta $($c.Nome): $(($_.Exception.Message -split "`n")[0])" }
     }
-    $libertado = [long][math]::Max(0, (EspacoLivre) - $antes)
+    [long]$libertado = [long](EspacoLivre) - [long]$antes
+    if ($libertado -lt 0) { $libertado = 0 }
     $ContasLibertado += $libertado
     if ($c.Caminho -and (Test-Path -LiteralPath $c.Caminho)) {
       Aviso "$($c.Nome): ficaram ficheiros por apagar (em uso). Reinicie e volte a correr o script."
@@ -1087,14 +1088,15 @@ foreach ($a in $AtalhosWeb) {
 
 Passo '8/8 Resumo'
 $LivreDepois = EspacoLivre
-$Ganho = $LivreDepois - $LivreAntes
+[long]$Ganho = [long]$LivreDepois - [long]$LivreAntes
+if ($Ganho -lt 0) { $Ganho = 0 }
 $Duracao = [int]((Get-Date) - $Inicio).TotalMinutes
 
 Write-Host ''
 Write-Host '============================================================' -ForegroundColor Green
 Write-Host "  Concluído em $Duracao min — $env:COMPUTERNAME" -ForegroundColor Green
 Write-Host "  Espaço livre antes:  $(Tamanho $LivreAntes)" -ForegroundColor Green
-Write-Host "  Espaço livre depois: $(Tamanho $LivreDepois)  (+$(Tamanho ([math]::Max($Ganho, 0))))" -ForegroundColor Green
+Write-Host "  Espaço livre depois: $(Tamanho $LivreDepois)  (+$(Tamanho $Ganho))" -ForegroundColor Green
 Write-Host "  Contas e pastas apagadas: $(Tamanho $ContasLibertado)" -ForegroundColor Green
 Write-Host "  Ficheiros das contas apagados: $(Tamanho $TotalContas)" -ForegroundColor Green
 Write-Host "  Registo: $Registo" -ForegroundColor Green
