@@ -47,7 +47,7 @@ exit /b
 
 # Versão deste script (mostrada no site profleoaf.pt/tools, no arranque e no resumo).
 # Muda a cada alteração publicada: ano.mês.dia-número
-$VersaoScript = '2026.11.25-6'
+$VersaoScript = '2026.11.25-7'
 
 $PedirConfirmacao       = $true   # pergunta antes de começar
 $DiasTransferencias     = 7       # apaga das Transferências o que tiver mais de 7 dias
@@ -238,6 +238,32 @@ function Parar-Servico([string]$nome, [int]$segundos = 30) {
     if ($svc.Status -eq 'Stopped') { return $true }
   }
   return $false
+}
+
+# Para um serviço à força: se não parar a bem, termina o processo dele, mas só se
+# esse processo não alojar outros serviços (num svchost partilhado mataria outros).
+function Forcar-Paragem([string]$nome) {
+  if (Parar-Servico $nome 30) { return $true }
+  $info = Get-CimInstance Win32_Service -Filter "Name='$nome'" -ErrorAction SilentlyContinue
+  if (-not $info -or -not $info.ProcessId) { return (Parar-Servico $nome 5) }
+  $pidSvc = [int]$info.ProcessId
+  $outros = @(Get-CimInstance Win32_Service -Filter "ProcessId=$pidSvc" -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -ne $nome })
+  if ($outros.Count -gt 0) { return $false }
+  Stop-Process -Id $pidSvc -Force -ErrorAction SilentlyContinue
+  return (Parar-Servico $nome 15)
+}
+
+# Tipo de arranque de um serviço, no formato do sc.exe config (para o repor depois)
+function Arranque-Servico([string]$nome) {
+  $info = Get-CimInstance Win32_Service -Filter "Name='$nome'" -ErrorAction SilentlyContinue
+  if (-not $info) { return $null }
+  switch ($info.StartMode) {
+    'Auto'     { if ($info.DelayedAutoStart) { return 'delayed-auto' } else { return 'auto' } }
+    'Manual'   { return 'demand' }
+    'Disabled' { return 'disabled' }
+    default    { return $null }
+  }
 }
 
 # Há uma atualização do Windows a meio (descarregada, a instalar ou à espera de reiniciar)?
@@ -944,19 +970,29 @@ $b = (Limpar-Pasta (Join-Path $env:ProgramData 'Microsoft\Windows\WER\ReportArch
      (Limpar-Pasta (Join-Path $env:ProgramData 'Microsoft\Windows\WER\ReportQueue'))
 Ok "Relatórios de erros ($(Tamanho $b))"
 
-if (Atualizacao-AMeio) {
-  Aviso 'Cache do Windows Update mantida: há uma atualização a meio. Deixe-a terminar, reinicie e corra o script outra vez.'
-} else {
-  $parouWu   = Parar-Servico 'wuauserv' 30
-  $parouBits = Parar-Servico 'bits' 30
+# Para o Windows Update à força (mesmo com uma atualização a meio) e apaga as
+# transferências. Durante a limpeza o serviço fica desligado, para o Windows não o
+# voltar a arrancar; no fim o tipo de arranque original é reposto.
+$arranqueWu   = Arranque-Servico 'wuauserv'
+$arranqueBits = Arranque-Servico 'bits'
+# Se já estiver desligado (ex.: uma execução anterior interrompida a meio), repõe o normal
+if (-not $arranqueWu -or $arranqueWu -eq 'disabled')     { $arranqueWu = 'demand' }
+if (-not $arranqueBits -or $arranqueBits -eq 'disabled') { $arranqueBits = 'demand' }
+& sc.exe config wuauserv start= disabled 2>&1 | Out-Null
+& sc.exe config bits start= disabled 2>&1 | Out-Null
+try {
+  $parouWu   = Forcar-Paragem 'wuauserv'
+  $parouBits = Forcar-Paragem 'bits'
   if ($parouWu -and $parouBits) {
     $b = Limpar-Pasta (Join-Path $env:windir 'SoftwareDistribution\Download')
     Ok "Cache do Windows Update ($(Tamanho $b))"
   } else {
-    Aviso 'Cache do Windows Update mantida: o Windows Update está ocupado e não parou.'
+    Aviso 'Cache do Windows Update mantida: não foi possível parar o Windows Update. Reinicie e corra o script outra vez.'
   }
-  & sc.exe start bits 2>&1 | Out-Null
-  & sc.exe start wuauserv 2>&1 | Out-Null
+} finally {
+  & sc.exe config wuauserv start= $arranqueWu 2>&1 | Out-Null
+  & sc.exe config bits start= $arranqueBits 2>&1 | Out-Null
+  # Não os arranca já: o Windows arranca-os quando precisar (evita voltar logo a descarregar)
 }
 
 if (Get-Command Delete-DeliveryOptimizationCache -ErrorAction SilentlyContinue) {
