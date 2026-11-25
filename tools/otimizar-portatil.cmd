@@ -44,6 +44,10 @@ exit /b
 
 # ----------------------------- DEFINIÇÕES ------------------------------------
 
+# Versão deste script (mostrada no site profleoaf.pt/tools, no arranque e no resumo).
+# Muda a cada alteração publicada: ano.mês.dia-número
+$VersaoScript = '2026.11.25-1'
+
 $PedirConfirmacao       = $true   # pergunta antes de começar
 $DiasTransferencias     = 7       # apaga das Transferências o que tiver mais de 7 dias
 $DiasLimpezaAutomatica  = 14      # depois, o Windows limpa sozinho as Transferências com mais de 14 dias
@@ -518,6 +522,7 @@ Write-Host '============================================================' -Foreg
 Write-Host '  OTIMIZAR PORTÁTIL — limpeza e otimização do Windows' -ForegroundColor Cyan
 Write-Host '============================================================' -ForegroundColor Cyan
 Write-Host ''
+Write-Host "Versão do script: $VersaoScript"
 Write-Host "Computador: $env:COMPUTERNAME"
 Write-Host ''
 Write-Host 'Vai ser apagado, em TODAS as contas deste computador:' -ForegroundColor Yellow
@@ -1226,6 +1231,7 @@ Write-Host "  Espaço livre antes:  $(Tamanho $LivreAntes)" -ForegroundColor Gre
 Write-Host "  Espaço livre depois: $(Tamanho $LivreDepois)  (+$(Tamanho $Ganho))" -ForegroundColor Green
 Write-Host "  Contas e pastas apagadas: $(Tamanho $ContasLibertado)" -ForegroundColor Green
 Write-Host "  Ficheiros das contas apagados: $(Tamanho $TotalContas)" -ForegroundColor Green
+Write-Host "  Versão do script: $VersaoScript" -ForegroundColor Green
 Write-Host "  Registo: $Registo" -ForegroundColor Green
 Write-Host '============================================================' -ForegroundColor Green
 if ($AppsFalharam.Count -gt 0) {
