@@ -576,7 +576,34 @@ if (-not $Winget) {
   Aviso 'Atualize o "Instalador de Aplicações" na Microsoft Store e volte a correr o script.'
   $AppsFalharam = @($AppsInstalar | ForEach-Object { $_[1] })
 } else {
+  # Verifica se o catálogo do winget está disponível. Numa conta de administrador onde o
+  # winget nunca foi usado, o catálogo pode não existir (erro 0x8a15000f); nesse caso repara-o.
+  function Catalogo-Ok {
+    & $Winget search --id 7zip.7zip --exact --source winget --accept-source-agreements 2>&1 | Out-Null
+    return ($LASTEXITCODE -eq 0)
+  }
+  $catalogo = Catalogo-Ok
+  if (-not $catalogo) {
+    Write-Host '    A reparar o catálogo de aplicações do winget...'
+    & $Winget source reset --force 2>&1 | Out-Null
+    & $Winget source update --name winget 2>&1 | Out-Null
+    $catalogo = Catalogo-Ok
+  }
+  if (-not $catalogo) {
+    # Reinstala o catálogo a partir do endereço oficial da Microsoft
+    try { Add-AppxPackage -Path 'https://cdn.winget.microsoft.com/cache/source.msix' -ErrorAction Stop } catch {}
+    & $Winget source update --name winget 2>&1 | Out-Null
+    $catalogo = Catalogo-Ok
+  }
+  if ($catalogo) { Ok 'Catálogo de aplicações disponível' }
+  else {
+    Aviso 'Não foi possível abrir o catálogo de aplicações do winget.'
+    Aviso 'Confirme a internet. Se a rede da escola bloquear cdn.winget.microsoft.com, ligue o portátil a outra rede (por exemplo, a do telemóvel) e volte a correr o script.'
+    $AppsFalharam = @($AppsInstalar | ForEach-Object { $_[1] })
+  }
+
   foreach ($app in $AppsInstalar) {
+    if (-not $catalogo) { break }
     $id = $app[0]; $nomeApp = $app[1]
     & $Winget list --id $id --exact --source winget --accept-source-agreements 2>&1 | Out-Null
     $codigo = $LASTEXITCODE
