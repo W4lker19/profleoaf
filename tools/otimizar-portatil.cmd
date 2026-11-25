@@ -27,14 +27,14 @@ exit /b
 #      jogos descarregados, ficheiros temporários, cache dos browsers e reciclagem
 #   3. Limpa o sistema: temporários, cache do Windows Update, relatórios de erros
 #   4. Remove aplicações do Windows que não fazem falta (Xbox, Solitaire, notícias,
-#      Paint, Fotografias, Câmara, Teams…) e impede que as atualizações as reinstalem
+#      Paint, Câmara, Teams…) e impede que as atualizações as reinstalem
 #   5. Desliga telemetria, sugestões, anúncios e widgets; ativa o Sensor de Armazenamento
 #   6. Desliga efeitos visuais (animações, transparências) em todas as contas
 #   7. Instala o que os alunos precisam: Office (português), Chrome, Edge, Scratch,
 #      GIMP, Audacity, VLC e 7-Zip, e atalhos para o MakeCode e o Microsoft 365
 #   8. Resumo, com os programas que ocupam mais espaço
 #
-#  NÃO mexe em: Windows Update, Windows Defender, Microsoft Store, Calculadora,
+#  NÃO mexe em: Windows Update, Windows Defender, Microsoft Store, Fotografias, Calculadora,
 #  OneDrive, nem nos Documentos/Imagens das contas que ficam.
 #  Pode ser corrido mais do que uma vez: só instala o que faltar.
 #  Registo de tudo o que foi feito em C:\ProgramData\OtimizarPortatil\
@@ -93,13 +93,13 @@ $AppsRemover = @(
   'Microsoft.MicrosoftJournal', 'MicrosoftWindows.CrossDevice', 'Microsoft.Windows.Ai.Copilot.Provider',
   'MicrosoftTeams',                          # chat pessoal do Windows 11
   'MSTeams',                                 # Teams (os alunos usam o Teams na web, em office.com)
-  'Microsoft.Paint', 'Microsoft.Windows.Photos', 'Microsoft.WindowsCamera',
+  'Microsoft.Paint', 'Microsoft.WindowsCamera',
   '*LinkedIn*', '*WhatsApp*', '*Amazon*', '*Booking*',
   '*CandyCrush*', '*BubbleWitch*', '*MarchofEmpires*', '*Disney*', '*Spotify*', '*TikTok*',
   '*Instagram*', '*Facebook*', '*Netflix*', '*Twitter*', '*ROBLOX*', '*Hulu*', '*PrimeVideo*',
   '*king.com*', '*Asphalt*', '*McAfee*', '*Norton*'
 )
-# Mantidas de propósito: Calculadora, Microsoft Store, Gravador de Som, Ferramenta de Recorte,
+# Mantidas de propósito: Fotografias, Calculadora, Microsoft Store, Gravador de Som, Ferramenta de Recorte,
 # Bloco de Notas, Leitor Multimédia (ZuneMusic), Clipchamp (M365 Educação), Whiteboard,
 # Assistência Rápida, Dolby (som dos altifalantes) e Obter Ajuda (resolução de problemas).
 # As aplicações removidas ficam marcadas como "retiradas" no Windows, para as atualizações
@@ -630,11 +630,13 @@ foreach ($a in $AppsRemover) {
   if ($removida) { Ok "Removida: $a" }
 }
 
-# Paint, Fotografias, Câmara e Teams: marcados como retirados mesmo que já não existam,
+# Paint, Câmara e Teams: marcados como retirados mesmo que já não existam,
 # para as atualizações do Windows não os voltarem a instalar
-foreach ($nomePk in 'Microsoft.Paint', 'Microsoft.Windows.Photos', 'Microsoft.WindowsCamera', 'MSTeams', 'MicrosoftTeams') {
+foreach ($nomePk in 'Microsoft.Paint', 'Microsoft.WindowsCamera', 'MSTeams', 'MicrosoftTeams') {
   Marcar-Retirada "$($nomePk)_8wekyb3d8bbwe"
 }
+# As Fotografias ficam: desfaz a marcação de uma versão anterior deste script, se existir
+Remove-Item -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.Windows.Photos_8wekyb3d8bbwe' -Force -ErrorAction SilentlyContinue
 
 # Teams clássico: o "Teams Machine-Wide Installer" volta a instalar o Teams em cada conta ao entrar
 foreach ($chave in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
