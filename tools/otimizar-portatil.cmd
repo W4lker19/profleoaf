@@ -47,7 +47,7 @@ exit /b
 
 # Versão deste script (mostrada no site profleoaf.pt/tools, no arranque e no resumo).
 # Muda a cada alteração publicada: ano.mês.dia-número
-$VersaoScript = '2026.11.25-5'
+$VersaoScript = '2026.11.25-6'
 
 $PedirConfirmacao       = $true   # pergunta antes de começar
 $DiasTransferencias     = 7       # apaga das Transferências o que tiver mais de 7 dias
@@ -191,7 +191,7 @@ $ServicosDesligar = @(
   'DiagTrack',            # telemetria
   'MapsBroker',           # mapas offline
   'RetailDemo',           # modo de demonstração de loja
-  'XblAuthManager', 'XblGameSave', 'XboxNetApiSvc', 'XboxGipSvc',  # Xbox
+  'XblGameSave', 'XblAuthManager', 'XboxNetApiSvc', 'XboxGipSvc',  # Xbox
   'WMPNetworkSvc',        # partilha do Windows Media Player
   'Fax'
 )
@@ -223,6 +223,31 @@ Start-Transcript -Path $Registo -Force | Out-Null
 function Passo($t) { Write-Host ''; Write-Host "==> $t" -ForegroundColor Cyan }
 function Ok($t)    { Write-Host "    [OK] $t" -ForegroundColor Green }
 function Aviso($t) { Write-Host "    [!]  $t" -ForegroundColor Yellow }
+
+# Para um serviço sem ficar preso: Stop-Service espera para sempre se o serviço
+# estiver ocupado (ex.: Windows Update a instalar). Devolve $true se ficou parado.
+function Parar-Servico([string]$nome, [int]$segundos = 30) {
+  $svc = Get-Service -Name $nome -ErrorAction SilentlyContinue
+  if (-not $svc) { return $true }
+  if ($svc.Status -eq 'Stopped') { return $true }
+  & sc.exe stop $nome 2>&1 | Out-Null
+  $fim = (Get-Date).AddSeconds($segundos)
+  while ((Get-Date) -lt $fim) {
+    Start-Sleep -Milliseconds 500
+    $svc.Refresh()
+    if ($svc.Status -eq 'Stopped') { return $true }
+  }
+  return $false
+}
+
+# Há uma atualização do Windows a meio (descarregada, a instalar ou à espera de reiniciar)?
+function Atualizacao-AMeio {
+  if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired') { return $true }
+  if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') { return $true }
+  $wu = Get-Service -Name wuauserv -ErrorAction SilentlyContinue
+  if ($wu -and ($wu.Status -eq 'StopPending' -or $wu.Status -eq 'StartPending')) { return $true }
+  return $false
+}
 
 function Tamanho($bytes) {
   if ($bytes -ge 1GB) { return '{0:N1} GB' -f ($bytes / 1GB) }
@@ -919,17 +944,29 @@ $b = (Limpar-Pasta (Join-Path $env:ProgramData 'Microsoft\Windows\WER\ReportArch
      (Limpar-Pasta (Join-Path $env:ProgramData 'Microsoft\Windows\WER\ReportQueue'))
 Ok "Relatórios de erros ($(Tamanho $b))"
 
-Stop-Service -Name wuauserv, bits -Force -ErrorAction SilentlyContinue
-$b = Limpar-Pasta (Join-Path $env:windir 'SoftwareDistribution\Download')
-Start-Service -Name bits, wuauserv -ErrorAction SilentlyContinue
-Ok "Cache do Windows Update ($(Tamanho $b))"
+if (Atualizacao-AMeio) {
+  Aviso 'Cache do Windows Update mantida: há uma atualização a meio. Deixe-a terminar, reinicie e corra o script outra vez.'
+} else {
+  $parouWu   = Parar-Servico 'wuauserv' 30
+  $parouBits = Parar-Servico 'bits' 30
+  if ($parouWu -and $parouBits) {
+    $b = Limpar-Pasta (Join-Path $env:windir 'SoftwareDistribution\Download')
+    Ok "Cache do Windows Update ($(Tamanho $b))"
+  } else {
+    Aviso 'Cache do Windows Update mantida: o Windows Update está ocupado e não parou.'
+  }
+  & sc.exe start bits 2>&1 | Out-Null
+  & sc.exe start wuauserv 2>&1 | Out-Null
+}
 
 if (Get-Command Delete-DeliveryOptimizationCache -ErrorAction SilentlyContinue) {
   Delete-DeliveryOptimizationCache -Force -ErrorAction SilentlyContinue | Out-Null
   Ok 'Cache da Otimização da Entrega'
 }
 
-if ($LimpezaProfunda) {
+if ($LimpezaProfunda -and (Atualizacao-AMeio)) {
+  Aviso 'Limpeza de componentes do Windows adiada: há uma atualização a meio. Reinicie e corra o script outra vez.'
+} elseif ($LimpezaProfunda) {
   Write-Host '    A limpar componentes antigos do Windows (pode demorar 10-30 min, não feche a janela)...'
   & dism.exe /Online /Cleanup-Image /StartComponentCleanup /NoRestart
   if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 3010) { Ok 'Componentes antigos do Windows removidos' }
@@ -979,8 +1016,8 @@ Ok "Sensor de Armazenamento ligado (semanal; Transferências com mais de $DiasLi
 foreach ($s in $ServicosDesligar) {
   $svc = Get-Service -Name $s -ErrorAction SilentlyContinue
   if ($svc) {
-    Stop-Service -Name $s -Force -ErrorAction SilentlyContinue
     Set-Service -Name $s -StartupType Disabled -ErrorAction SilentlyContinue
+    [void](Parar-Servico $s 15)
     Ok "Serviço desligado: $s"
   }
 }
