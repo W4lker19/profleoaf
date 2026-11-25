@@ -151,13 +151,13 @@ $ConfigOffice = @'
 
 # Programas do computador a desinstalar (nome como aparece em Definições > Aplicações).
 # Só com desinstaladores silenciosos conhecidos; os outros ficam com um aviso.
+# Ficam de propósito: Lenovo Vantage Service, Lenovo Hotkeys, drivers Intel e Realtek, Visual C++.
 $ProgramasRemover = @(
   'LibreOffice*',
   'paint.net*',
   'Microsoft Windows Desktop Runtime - 5.*',   # .NET 5, 6 e 7: sem suporte da Microsoft
   'Microsoft Windows Desktop Runtime - 6.*',
   'Microsoft Windows Desktop Runtime - 7.*',
-  'Lenovo Vantage Service*',
   'Lenovo System Update*',
   'Ligação ao ambiente de trabalho remoto*', 'Remote Desktop Connection*'
 )
