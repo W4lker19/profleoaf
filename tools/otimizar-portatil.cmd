@@ -913,6 +913,7 @@ if ($InstalarOffice) {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -Uri 'https://officecdn.microsoft.com/pr/wsus/setup.exe' -OutFile $setupOffice -UseBasicParsing -ErrorAction Stop
         $pr = Start-Process -FilePath $setupOffice -ArgumentList '/configure', $xmlOffice -PassThru
+        $null = $pr.Handle   # sem isto, o PowerShell 5.1 às vezes não devolve o código de saída
         $pr.WaitForExit()
         $codigo = $pr.ExitCode
       } catch { Aviso "Não foi possível descarregar o instalador oficial do Office: $(($_.Exception.Message -split "`n")[0])" }
