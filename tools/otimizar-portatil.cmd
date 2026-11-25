@@ -21,13 +21,13 @@ exit /b
 #  A única pergunta é a confirmação no início (com a lista do que vai ser apagado).
 #
 #  O que faz:
-#   1. Deixa só as contas Administrador e Aluno: apaga as outras contas, as pastas
-#      delas e as pastas de contas abandonadas (mostra a lista antes de apagar)
-#   2. Limpa os ficheiros dos alunos: transferências antigas, instaladores e
-#      jogos descarregados, ficheiros temporários, cache dos browsers e reciclagem
-#   3. Limpa o sistema: temporários, cache do Windows Update, relatórios de erros
-#   4. Remove aplicações do Windows que não fazem falta (Xbox, Solitaire, notícias,
+#   1. Remove aplicações do Windows que não fazem falta (Xbox, Solitaire, notícias,
 #      Paint, Câmara, Teams, OneDrive…) e impede que as atualizações as reinstalem
+#   2. Deixa só as contas Administrador e Aluno: apaga as outras contas, as pastas
+#      delas e as pastas de contas abandonadas (mostra a lista antes de apagar)
+#   3. Limpa os ficheiros dos alunos: transferências antigas, instaladores e
+#      jogos descarregados, ficheiros temporários, cache dos browsers e reciclagem
+#   4. Limpa o sistema: temporários, cache do Windows Update, relatórios de erros
 #   5. Desliga telemetria, sugestões, anúncios e widgets; ativa o Sensor de Armazenamento
 #   6. Desliga efeitos visuais (animações, transparências) em todas as contas
 #   7. Instala o que os alunos precisam: Office (português), Chrome, Edge, Scratch,
@@ -501,9 +501,116 @@ try {
   Aviso 'Restauro do Sistema desligado neste portátil (sem ponto de restauro)'
 }
 
-# ----------------------------- 1. CONTAS --------------------------------------
+# ----------------------------- 1. APLICAÇÕES ---------------------------------
 
-Passo '1/8 A apagar as contas e pastas que não são precisas'
+Passo '1/8 A remover aplicações desnecessárias'
+
+$Provisionadas = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+$AppsPorRemover = @()
+foreach ($a in $AppsRemover) {
+  $removida = $false
+  # Aplicações em "pacote" (bundle) têm de ser removidas pelo pacote, não pela parte principal
+  $pacotes = @(Get-AppxPackage -AllUsers -PackageTypeFilter Bundle -Name $a -ErrorAction SilentlyContinue)
+  if ($pacotes.Count -eq 0) { $pacotes = @(Get-AppxPackage -AllUsers -Name $a -ErrorAction SilentlyContinue) }
+  foreach ($pk in $pacotes) {
+    Marcar-Retirada $pk.PackageFamilyName
+    try { Remove-AppxPackage -Package $pk.PackageFullName -AllUsers -ErrorAction Stop; $removida = $true }
+    catch {
+      # Falha típica logo a seguir a apagar contas ("um utilizador terminou sessão"): o Windows
+      # ainda guarda a conta apagada. Remove-se então conta a conta, só nas contas que existem.
+      $falhou = $false
+      $tentativas = 0
+      $infos = @($pk.PackageUserInformation)
+      if ($infos.Count -eq 0) {
+        # Nos pacotes "bundle" a lista de contas pode vir vazia: usa a do pacote principal
+        $infos = @(Get-AppxPackage -AllUsers -Name $pk.Name -ErrorAction SilentlyContinue | ForEach-Object { $_.PackageUserInformation })
+      }
+      foreach ($ui in $infos) {
+        $sidUi = $ui.UserSecurityId.Sid
+        if (-not $sidUi) { continue }
+        if (-not (Test-Path -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$sidUi")) { continue }
+        if ("$($ui.InstallState)" -ne 'Installed') { continue }
+        $tentativas++
+        try { Remove-AppxPackage -Package $pk.PackageFullName -User $sidUi -ErrorAction Stop } catch { $falhou = $true }
+      }
+      if ($falhou -or $tentativas -eq 0) { if ($AppsPorRemover -notcontains $pk.Name) { $AppsPorRemover += $pk.Name } }
+      else { $removida = $true }
+    }
+  }
+  $Provisionadas | Where-Object { $_.DisplayName -like $a } | ForEach-Object {
+    Marcar-Retirada "$($_.DisplayName)_$($_.PublisherId)"
+    try { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -AllUsers -ErrorAction Stop | Out-Null; $removida = $true } catch {}
+  }
+  if ($removida) { Ok "Removida: $a" }
+}
+
+if ($AppsPorRemover.Count -gt 0) {
+  Aviso ('Ficaram por remover (reinicie e volte a correr o script): ' + ($AppsPorRemover -join ', '))
+}
+
+# Paint, Câmara e Teams: marcados como retirados mesmo que já não existam,
+# para as atualizações do Windows não os voltarem a instalar
+foreach ($nomePk in 'Microsoft.Paint', 'Microsoft.WindowsCamera', 'MSTeams', 'MicrosoftTeams') {
+  Marcar-Retirada "$($nomePk)_8wekyb3d8bbwe"
+}
+# As Fotografias ficam: desfaz a marcação de uma versão anterior deste script, se existir
+Remove-Item -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.Windows.Photos_8wekyb3d8bbwe' -Force -ErrorAction SilentlyContinue
+
+# Teams clássico: o "Teams Machine-Wide Installer" volta a instalar o Teams em cada conta ao entrar
+foreach ($chave in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+                   'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*') {
+  Get-ItemProperty -Path $chave -ErrorAction SilentlyContinue |
+    Where-Object { $_.DisplayName -eq 'Teams Machine-Wide Installer' -and $_.PSChildName -match '^\{[0-9A-Fa-f-]+\}$' } |
+    ForEach-Object {
+      $pr = Start-Process -FilePath msiexec.exe -ArgumentList '/x', $_.PSChildName, '/qn', '/norestart' -Wait -PassThru
+      if ($pr.ExitCode -eq 0 -or $pr.ExitCode -eq 3010) { Ok 'Removido: Teams Machine-Wide Installer' }
+      else { Aviso "Teams Machine-Wide Installer: a desinstalação terminou com o código $($pr.ExitCode)" }
+    }
+}
+
+# Paint clássico (componente opcional em algumas versões do Windows)
+try {
+  Get-WindowsCapability -Online -ErrorAction Stop |
+    Where-Object { $_.Name -like 'Microsoft.Windows.MSPaint*' -and $_.State -eq 'Installed' } |
+    ForEach-Object { Remove-WindowsCapability -Online -Name $_.Name -ErrorAction Stop | Out-Null; Ok 'Removido: Paint clássico' }
+} catch {}
+
+# OneDrive: desinstala a aplicação (os ficheiros da pasta OneDrive de cada conta ficam)
+if ($RemoverOneDrive) {
+  Stop-Process -Name OneDrive, OneDriveSetup -Force -ErrorAction SilentlyContinue
+  function Correr-Desinstalador([string]$exe, [string[]]$argumentos) {
+    try {
+      $pr = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru -ErrorAction Stop
+      $null = $pr.Handle
+      [void]$pr.WaitForExit(300000)   # no máximo 5 minutos
+    } catch {}
+  }
+  # Instalação para todo o computador (Programas)
+  $odMaquina = Get-ChildItem -Path "$env:ProgramFiles\Microsoft OneDrive", "${env:ProgramFiles(x86)}\Microsoft OneDrive" `
+                 -Filter 'OneDriveSetup.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($odMaquina) { Correr-Desinstalador $odMaquina.FullName @('/uninstall', '/allusers') }
+  # Instalação na conta que está a correr o script
+  foreach ($odSetup in "$env:SystemRoot\System32\OneDriveSetup.exe", "$env:SystemRoot\SysWOW64\OneDriveSetup.exe") {
+    if (Test-Path -LiteralPath $odSetup) { Correr-Desinstalador $odSetup @('/uninstall'); break }
+  }
+  # Nas outras contas: só a pasta do PROGRAMA (AppData\Local\Microsoft\OneDrive), nunca a dos ficheiros
+  $bOd = [long]0
+  foreach ($p in @(Get-CimInstance Win32_UserProfile -ErrorAction SilentlyContinue |
+                   Where-Object { -not $_.Special -and $_.LocalPath -like "$env:SystemDrive\Users\*" -and -not $_.Loaded })) {
+    $bOd += Apagar-Pasta (Join-Path $p.LocalPath 'AppData\Local\Microsoft\OneDrive')
+  }
+  # Impede que o OneDrive volte a ser usado e tira-o do painel do Explorador de Ficheiros
+  Definir-Registo 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive' 'DisableFileSyncNGSC' 1
+  foreach ($clsid in 'Registry::HKEY_CLASSES_ROOT\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}',
+                     'Registry::HKEY_CLASSES_ROOT\Wow6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}') {
+    if (Test-Path -LiteralPath $clsid) { Set-ItemProperty -LiteralPath $clsid -Name 'System.IsPinnedToNameSpaceTree' -Value 0 -ErrorAction SilentlyContinue }
+  }
+  Ok "Aplicação OneDrive desinstalada e desligada ($(Tamanho $bOd) libertados nas outras contas; nas contas com sessão aberta termina no próximo início de sessão)"
+}
+
+# ----------------------------- 2. CONTAS --------------------------------------
+
+Passo '2/8 A apagar as contas e pastas que não são precisas'
 [long]$ContasLibertado = 0
 if ($AvisoContas) { Aviso $AvisoContas }
 elseif (-not $ApagarOutrasContas) { Ok 'Apagar contas está desligado nas definições' }
@@ -530,9 +637,9 @@ else {
   }
 }
 
-# ----------------------------- 2. FICHEIROS DOS ALUNOS -----------------------
+# ----------------------------- 3. FICHEIROS DOS ALUNOS -----------------------
 
-Passo '2/8 A limpar os ficheiros das contas'
+Passo '3/8 A limpar os ficheiros das contas'
 
 Stop-Process -Name chrome, msedge, firefox, opera, brave, Roblox*, Discord -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
@@ -618,9 +725,9 @@ Get-ChildItem -LiteralPath $rb -Force -Directory -ErrorAction SilentlyContinue |
   ForEach-Object { $bytesRb += Limpar-Pasta $_.FullName }
 Ok "Reciclagem esvaziada ($(Tamanho $bytesRb))"
 
-# ----------------------------- 3. SISTEMA ------------------------------------
+# ----------------------------- 4. SISTEMA ------------------------------------
 
-Passo '3/8 A limpar o sistema'
+Passo '4/8 A limpar o sistema'
 
 $b = Limpar-Pasta (Join-Path $env:windir 'Temp')
 Ok "Temporários do Windows ($(Tamanho $b))"
@@ -644,106 +751,6 @@ if ($LimpezaProfunda) {
   & dism.exe /Online /Cleanup-Image /StartComponentCleanup /NoRestart
   if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq 3010) { Ok 'Componentes antigos do Windows removidos' }
   else { Aviso "A limpeza de componentes não terminou (código $LASTEXITCODE). Normalmente é por haver uma atualização à espera de reinício; volte a correr depois de reiniciar." }
-}
-
-# ----------------------------- 4. APLICAÇÕES ---------------------------------
-
-Passo '4/8 A remover aplicações desnecessárias'
-
-$Provisionadas = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
-$AppsPorRemover = @()
-foreach ($a in $AppsRemover) {
-  $removida = $false
-  # Aplicações em "pacote" (bundle) têm de ser removidas pelo pacote, não pela parte principal
-  $pacotes = @(Get-AppxPackage -AllUsers -PackageTypeFilter Bundle -Name $a -ErrorAction SilentlyContinue)
-  if ($pacotes.Count -eq 0) { $pacotes = @(Get-AppxPackage -AllUsers -Name $a -ErrorAction SilentlyContinue) }
-  foreach ($pk in $pacotes) {
-    Marcar-Retirada $pk.PackageFamilyName
-    try { Remove-AppxPackage -Package $pk.PackageFullName -AllUsers -ErrorAction Stop; $removida = $true }
-    catch {
-      # Falha típica logo a seguir a apagar contas ("um utilizador terminou sessão"): o Windows
-      # ainda guarda a conta apagada. Remove-se então conta a conta, só nas contas que existem.
-      $falhou = $false
-      foreach ($ui in @($pk.PackageUserInformation)) {
-        $sidUi = $ui.UserSecurityId.Sid
-        if (-not $sidUi) { continue }
-        if (-not (Test-Path -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$sidUi")) { continue }
-        if ("$($ui.InstallState)" -notmatch 'Installed') { continue }
-        try { Remove-AppxPackage -Package $pk.PackageFullName -User $sidUi -ErrorAction Stop } catch { $falhou = $true }
-      }
-      if ($falhou) { if ($AppsPorRemover -notcontains $pk.Name) { $AppsPorRemover += $pk.Name } }
-      else { $removida = $true }
-    }
-  }
-  $Provisionadas | Where-Object { $_.DisplayName -like $a } | ForEach-Object {
-    Marcar-Retirada "$($_.DisplayName)_$($_.PublisherId)"
-    try { Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName -AllUsers -ErrorAction Stop | Out-Null; $removida = $true } catch {}
-  }
-  if ($removida) { Ok "Removida: $a" }
-}
-
-if ($AppsPorRemover.Count -gt 0) {
-  Aviso ('Ficaram por remover (reinicie e volte a correr o script): ' + ($AppsPorRemover -join ', '))
-}
-
-# Paint, Câmara e Teams: marcados como retirados mesmo que já não existam,
-# para as atualizações do Windows não os voltarem a instalar
-foreach ($nomePk in 'Microsoft.Paint', 'Microsoft.WindowsCamera', 'MSTeams', 'MicrosoftTeams') {
-  Marcar-Retirada "$($nomePk)_8wekyb3d8bbwe"
-}
-# As Fotografias ficam: desfaz a marcação de uma versão anterior deste script, se existir
-Remove-Item -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.Windows.Photos_8wekyb3d8bbwe' -Force -ErrorAction SilentlyContinue
-
-# Teams clássico: o "Teams Machine-Wide Installer" volta a instalar o Teams em cada conta ao entrar
-foreach ($chave in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
-                   'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*') {
-  Get-ItemProperty -Path $chave -ErrorAction SilentlyContinue |
-    Where-Object { $_.DisplayName -eq 'Teams Machine-Wide Installer' -and $_.PSChildName -match '^\{[0-9A-Fa-f-]+\}$' } |
-    ForEach-Object {
-      $pr = Start-Process -FilePath msiexec.exe -ArgumentList '/x', $_.PSChildName, '/qn', '/norestart' -Wait -PassThru
-      if ($pr.ExitCode -eq 0 -or $pr.ExitCode -eq 3010) { Ok 'Removido: Teams Machine-Wide Installer' }
-      else { Aviso "Teams Machine-Wide Installer: a desinstalação terminou com o código $($pr.ExitCode)" }
-    }
-}
-
-# Paint clássico (componente opcional em algumas versões do Windows)
-try {
-  Get-WindowsCapability -Online -ErrorAction Stop |
-    Where-Object { $_.Name -like 'Microsoft.Windows.MSPaint*' -and $_.State -eq 'Installed' } |
-    ForEach-Object { Remove-WindowsCapability -Online -Name $_.Name -ErrorAction Stop | Out-Null; Ok 'Removido: Paint clássico' }
-} catch {}
-
-# OneDrive: desinstala a aplicação (os ficheiros da pasta OneDrive de cada conta ficam)
-if ($RemoverOneDrive) {
-  Stop-Process -Name OneDrive, OneDriveSetup -Force -ErrorAction SilentlyContinue
-  function Correr-Desinstalador([string]$exe, [string[]]$argumentos) {
-    try {
-      $pr = Start-Process -FilePath $exe -ArgumentList $argumentos -PassThru -ErrorAction Stop
-      $null = $pr.Handle
-      [void]$pr.WaitForExit(300000)   # no máximo 5 minutos
-    } catch {}
-  }
-  # Instalação para todo o computador (Programas)
-  $odMaquina = Get-ChildItem -Path "$env:ProgramFiles\Microsoft OneDrive", "${env:ProgramFiles(x86)}\Microsoft OneDrive" `
-                 -Filter 'OneDriveSetup.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($odMaquina) { Correr-Desinstalador $odMaquina.FullName @('/uninstall', '/allusers') }
-  # Instalação na conta que está a correr o script
-  foreach ($odSetup in "$env:SystemRoot\System32\OneDriveSetup.exe", "$env:SystemRoot\SysWOW64\OneDriveSetup.exe") {
-    if (Test-Path -LiteralPath $odSetup) { Correr-Desinstalador $odSetup @('/uninstall'); break }
-  }
-  # Nas outras contas: só a pasta do PROGRAMA (AppData\Local\Microsoft\OneDrive), nunca a dos ficheiros
-  $bOd = [long]0
-  foreach ($p in @(Get-CimInstance Win32_UserProfile -ErrorAction SilentlyContinue |
-                   Where-Object { -not $_.Special -and $_.LocalPath -like "$env:SystemDrive\Users\*" -and -not $_.Loaded })) {
-    $bOd += Apagar-Pasta (Join-Path $p.LocalPath 'AppData\Local\Microsoft\OneDrive')
-  }
-  # Impede que o OneDrive volte a ser usado e tira-o do painel do Explorador de Ficheiros
-  Definir-Registo 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive' 'DisableFileSyncNGSC' 1
-  foreach ($clsid in 'Registry::HKEY_CLASSES_ROOT\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}',
-                     'Registry::HKEY_CLASSES_ROOT\Wow6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}') {
-    if (Test-Path -LiteralPath $clsid) { Set-ItemProperty -LiteralPath $clsid -Name 'System.IsPinnedToNameSpaceTree' -Value 0 -ErrorAction SilentlyContinue }
-  }
-  Ok "Aplicação OneDrive desinstalada e desligada ($(Tamanho $bOd) libertados nas outras contas; nas contas com sessão aberta termina no próximo início de sessão)"
 }
 
 # ----------------------------- 5. DEFINIÇÕES DO SISTEMA ----------------------
